@@ -17,25 +17,6 @@ const auth = firebase.auth(); // Get the auth service instance
 const database = firebase.database(); // Get the database service instance
 const storage = firebase.storage(); // Get the storage service instance
 
-// Firebase function references (using the service instances)
-const signInWithEmailAndPassword = firebase.auth.signInWithEmailAndPassword;
-const signOut = firebase.auth.signOut;
-const onAuthStateChanged = firebase.auth.onAuthStateChanged;
-const ref = firebase.database.ref;
-const onValue = firebase.database.onValue;
-const push = firebase.database.push;
-const set = firebase.database.set;
-const remove = firebase.database.remove;
-const get = firebase.database.get;
-const child = firebase.database.child;
-const update = firebase.database.update;
-const storageRef = firebase.storage.ref;
-const uploadBytes = firebase.storage.uploadBytes;
-const getDownloadURL = firebase.storage.getDownloadURL;
-const deleteObject = firebase.storage.deleteObject;
-const listAll = firebase.storage.listAll;
-const serverTimestamp = firebase.database.ServerValue.TIMESTAMP;
-
 // Admin UI Elements
 const authSection = document.getElementById('auth-section');
 const adminDashboard = document.getElementById('admin-dashboard');
@@ -260,7 +241,7 @@ adminLoginBtn.addEventListener('click', async () => {
     adminLoginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
     try {
         // Correctly call signInWithEmailAndPassword on the auth object
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
         // UI update will be handled by onAuthStateChanged
     } catch (error) {
         await showAlert('Login failed: ' + error.message, 'Login Error');
@@ -274,7 +255,7 @@ adminLoginBtn.addEventListener('click', async () => {
 adminLogoutBtn.addEventListener('click', async () => {
     try {
         // Correctly call signOut on the auth object
-        await signOut(auth);
+        await auth.signOut();
         // UI will be updated by onAuthStateChanged listener
     } catch (error) {
         console.error('Logout error:', error);
@@ -283,7 +264,7 @@ adminLogoutBtn.addEventListener('click', async () => {
 });
 
 // Correctly call onAuthStateChanged on the auth object
-onAuthStateChanged(auth, (user) => {
+auth.onAuthStateChanged((user) => {
     const adminEmail = "warnightog.thunderbound@gmail.com"; // Set your admin email here
     if (user && user.email === adminEmail) {
         currentAdminUID = user.uid;
@@ -316,12 +297,11 @@ async function uploadImage(file, productId) {
     if (!file) return null;
     // Create a specific folder for each product's images
     const fileName = `${Date.now()}_${file.name}`;
-    // Correctly call storageRef on the storage object
-    const storageReference = storageRef(storage, `product_images/${productId}/${fileName}`);
-    // Correctly call uploadBytes
-    const snapshot = await uploadBytes(storageReference, file);
+    // Correctly call storage.ref() and .put()
+    const storageReference = storage.ref(`product_images/${productId}/${fileName}`);
+    const snapshot = await storageReference.put(file);
     // Correctly call getDownloadURL
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    const downloadURL = await snapshot.ref.getDownloadURL();
     return downloadURL;
 }
 
@@ -367,8 +347,8 @@ addEditProductBtn.addEventListener('click', async () => {
     let currentProductId = id;
     if (!currentProductId) {
         // Generate a new ID for new product to use in storage path and database
-        // Correctly call push on a database ref
-        const newProductRef = push(ref(database, 'products'));
+        // Correctly call push() on database.ref()
+        const newProductRef = database.ref('products').push();
         currentProductId = newProductRef.key;
     }
 
@@ -399,22 +379,22 @@ addEditProductBtn.addEventListener('click', async () => {
             images: finalImageUrls, // Use the collected URLs
             videoUrl: videoUrl || '', // Default to empty string if empty
             featured,
-            updatedAt: serverTimestamp()
+            updatedAt: firebase.database.ServerValue.TIMESTAMP // Correct ServerValue usage
         };
 
         if (id) {
             // If editing, use the existing ID and update only changed fields
-            // Correctly call update on a database ref
-            await update(ref(database, 'products/' + id), productData);
+            // Correctly call update() on database.ref()
+            await database.ref('products/' + id).update(productData);
             await showAlert('Product updated successfully!', 'Success');
         } else {
             // If adding, use the generated ID and set initial values
-            productData.createdAt = serverTimestamp();
+            productData.createdAt = firebase.database.ServerValue.TIMESTAMP; // Correct ServerValue usage
             productData.totalStarsSum = 0; // Initialize for new products
             productData.numberOfRatings = 0; // Initialize for new products
             productData.averageRating = "0.00"; // Initialize for new products
-            // Correctly call set on a database ref
-            await set(ref(database, 'products/' + currentProductId), productData);
+            // Correctly call set() on database.ref()
+            await database.ref('products/' + currentProductId).set(productData);
             await showAlert('Product added successfully!', 'Success');
         }
         clearProductForm(); // Clear form after successful add/edit
@@ -444,9 +424,9 @@ function clearProductForm() {
 }
 
 function listenForProducts() {
-    // Correctly call ref on the database object and onValue
-    const productsRef = ref(database, 'products');
-    onValue(productsRef, (snapshot) => {
+    // Correctly call database.ref() and .on()
+    const productsRef = database.ref('products');
+    productsRef.on('value', (snapshot) => {
         allAdminProducts = {};
         if (snapshot.exists()) {
             snapshot.forEach(childSnapshot => {
@@ -574,9 +554,9 @@ async function deleteProduct(id) {
                 try {
                     // Get the path from the full URL
                     const imagePath = decodeURIComponent(imageUrl.split('/o/')[1].split('?')[0]);
-                    // Correctly call storageRef on the storage object and deleteObject
-                    const imageRef = storageRef(storage, imagePath);
-                    await deleteObject(imageRef);
+                    // Correctly call storage.ref() and .delete()
+                    const imageRef = storage.ref(imagePath);
+                    await imageRef.delete();
                 } catch (imgError) {
                     // Ignore errors if image doesn't exist in storage (e.g., placeholder or external URL)
                     console.warn(`Could not delete image ${imageUrl}:`, imgError.message);
@@ -584,8 +564,8 @@ async function deleteProduct(id) {
             });
             await Promise.all(imagesToDeletePromises);
         }
-        // Correctly call remove on a database ref
-        await remove(ref(database, 'products/' + id));
+        // Correctly call database.ref() and .remove()
+        await database.ref('products/' + id).remove();
         await showAlert('Product deleted successfully!', 'Success');
     } catch (error) {
         await showAlert('Error deleting product: ' + error.message, 'Delete Error');
@@ -595,9 +575,9 @@ async function deleteProduct(id) {
 
 // --- Firebase Order Operations ---
 function listenForOrders() {
-    // Correctly call ref on the database object and onValue
-    const ordersRef = ref(database, 'orders');
-    onValue(ordersRef, (snapshot) => {
+    // Correctly call database.ref() and .on()
+    const ordersRef = database.ref('orders');
+    ordersRef.on('value', (snapshot) => {
         allOrders = {};
         const pendingOrders = {};
         const completedOrders = {};
@@ -697,9 +677,9 @@ async function completeOrder(orderId) {
         return;
     }
     try {
-        // Correctly call ref on the database object and update
-        const orderRef = ref(database, 'orders/' + orderId);
-        await update(orderRef, { status: 'completed', completedDate: serverTimestamp() });
+        // Correctly call database.ref() and .update()
+        const orderRef = database.ref('orders/' + orderId);
+        await orderRef.update({ status: 'completed', completedDate: firebase.database.ServerValue.TIMESTAMP });
         await showAlert(`Order ...${orderId.substring(orderId.length - 6)} marked as completed and moved to history.`, 'Order Completed');
     } catch (error) {
         await showAlert('Error completing order: ' + error.message, 'Completion Error');
@@ -713,9 +693,9 @@ async function cancelOrder(orderId) {
         return;
     }
     try {
-        // Correctly call ref on the database object and update
-        const orderRef = ref(database, 'orders/' + orderId);
-        await update(orderRef, { status: 'cancelled', completedDate: serverTimestamp() });
+        // Correctly call database.ref() and .update()
+        const orderRef = database.ref('orders/' + orderId);
+        await orderRef.update({ status: 'cancelled', completedDate: firebase.database.ServerValue.TIMESTAMP });
         await showAlert(`Order ...${orderId.substring(orderId.length - 6)} cancelled and moved to history.`, 'Order Cancelled');
     } catch (error) {
         await showAlert('Error cancelling order: ' + error.message, 'Cancellation Error');
@@ -732,9 +712,9 @@ function updateDashboardCounts(totalProducts, pendingOrders, completedOrders) {
 
 // --- Firebase Analytics Operations ---
 function listenForRatings() {
-    // Correctly call ref on the database object and onValue
-    const ratingsRef = ref(database, 'ratings');
-    onValue(ratingsRef, (snapshot) => {
+    // Correctly call database.ref() and .on()
+    const ratingsRef = database.ref('ratings');
+    ratingsRef.on('value', (snapshot) => {
         allRatings = {};
         if (snapshot.exists()) {
             snapshot.forEach(childSnapshot => {
@@ -1077,6 +1057,8 @@ function getOrdersForProductInTimeframe(productId, timeframe) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial display based on auth state (handled by onAuthStateChanged)
-    // No direct display logic needed here, as onAuthStateChanged will run on load.
+    // This will be handled by the onAuthStateChanged listener.
+    // The initial display of authSection is set to 'block' in admin.html,
+    // and adminDashboard is 'none'. The onAuthStateChanged listener will
+    // then toggle these based on the user's authentication status.
 });
