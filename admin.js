@@ -1,5 +1,4 @@
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBr6A2OGh-nwfMzOwmVOWs1-u5ylZ2Vemw",
   authDomain: "hina-s-rootandbloomstore.firebaseapp.com",
@@ -11,16 +10,17 @@ const firebaseConfig = {
   measurementId: "G-TT31HC3NZ3"
 };
 
-// Initialize Firebase
+// Initialize Firebase using the global firebase object
 const app = firebase.initializeApp(firebaseConfig);
 const analytics = firebase.analytics();
 const auth = firebase.auth();
 const database = firebase.database();
 const storage = firebase.storage();
-const storageRef = firebase.storage.ref;
-const uploadBytes = firebase.storage.uploadBytes;
-const getDownloadURL = firebase.storage.getDownloadURL;
-const deleteObject = firebase.storage.deleteObject;
+
+// Firebase function references (using the global firebase object)
+const signInWithEmailAndPassword = firebase.auth.signInWithEmailAndPassword;
+const signOut = firebase.auth.signOut;
+const onAuthStateChanged = firebase.auth.onAuthStateChanged;
 const ref = firebase.database.ref;
 const onValue = firebase.database.onValue;
 const push = firebase.database.push;
@@ -28,9 +28,12 @@ const set = firebase.database.set;
 const remove = firebase.database.remove;
 const get = firebase.database.get;
 const child = firebase.database.child;
-const signInWithEmailAndPassword = firebase.auth.signInWithEmailAndPassword;
-const signOut = firebase.auth.signOut;
-const onAuthStateChanged = firebase.auth.onAuthStateChanged;
+const update = firebase.database.update; // Added update for partial updates
+const storageRef = firebase.storage.ref;
+const uploadBytes = firebase.storage.uploadBytes;
+const getDownloadURL = firebase.storage.getDownloadURL;
+const deleteObject = firebase.storage.deleteObject;
+const listAll = firebase.storage.listAll; // Added listAll for deleting product images
 const serverTimestamp = firebase.database.ServerValue.TIMESTAMP;
 
 // Admin UI Elements
@@ -62,7 +65,7 @@ const productListContainer = document.getElementById('product-list-container');
 const adminProductSearchInput = document.getElementById('admin-product-search');
 const adminProductSearchBtn = document.getElementById('admin-product-search-btn');
 
-// Image Input Elements (updated for file inputs)
+// Image Input Elements
 const productImageInputs = [
     document.getElementById('product-image-file-1'),
     document.getElementById('product-image-file-2'),
@@ -294,14 +297,23 @@ onAuthStateChanged(auth, (user) => {
         adminDashboard.style.display = 'none';
         adminEmailInput.value = '';
         adminPasswordInput.value = '';
+        // Clear any displayed products/orders when logged out
+        productListContainer.innerHTML = '<p class="no-items-message">No products available.</p>';
+        orderListContainer.innerHTML = '<p class="no-items-message">No pending orders.</p>';
+        completedOrderListContainer.innerHTML = '<p class="no-items-message">No completed orders yet.</p>';
+        updateDashboardCounts(0, 0, 0); // Reset dashboard counts
+        // Destroy charts if they exist
+        if (productRatingsChart) productRatingsChart.destroy();
+        if (productComparisonChart) productComparisonChart.destroy();
     }
 });
 
 // --- Firebase Product Operations ---
-async function uploadImage(file) {
+async function uploadImage(file, productId) {
     if (!file) return null;
+    // Create a specific folder for each product's images
     const fileName = `${Date.now()}_${file.name}`;
-    const storageReference = storageRef(storage, 'product_images/' + fileName);
+    const storageReference = storageRef(storage, `product_images/${productId}/${fileName}`);
     const snapshot = await uploadBytes(storageReference, file);
     const downloadURL = await getDownloadURL(snapshot.ref);
     return downloadURL;
@@ -322,7 +334,7 @@ addEditProductBtn.addEventListener('click', async () => {
     const existingImageUrls = [];
     const newFilesToUpload = [];
 
-    productImagePreviews.forEach((previewEl, index) => {
+    productImagePreviews.forEach((previewEl) => {
         // If an existing image URL is displayed AND it's not a local FileReader URL (which starts with 'data:'),
         // add it to existing URLs.
         if (previewEl.style.display === 'block' && previewEl.src && previewEl.src.startsWith('http')) {
@@ -330,57 +342,65 @@ addEditProductBtn.addEventListener('click', async () => {
         }
     });
 
-    productImageInputs.forEach((input, index) => {
+    productImageInputs.forEach((input) => {
         if (input.files && input.files[0]) {
             newFilesToUpload.push(input.files[0]);
         }
     });
 
-    if (!title || !price || isNaN(price) || !stock || isNaN(stock)) {
-        await showAlert('Please fill in all required product fields: Title, Price, and Stock.', 'Validation Error');
-        return;
-    }
-    if (price <= 0 || stock < 0) {
-        await showAlert('Price must be greater than 0, and Stock cannot be negative.', 'Validation Error');
+    // Basic validation
+    if (!title || !description || !category || isNaN(price) || price <= 0 || isNaN(stock) || stock < 0 || (existingImageUrls.length === 0 && newFilesToUpload.length === 0)) {
+        await showAlert('Please fill in all required fields (Title, Description, Category, Price > 0, Stock >= 0, at least one image).', 'Validation Error');
         return;
     }
 
     addEditProductBtn.disabled = true;
-    const originalButtonHTML = addEditProductBtn.innerHTML;
+    const originalButtonHTML = addEditProductBtn.innerHTML; // Store original button content
     addEditProductBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
+    let currentProductId = id;
+    if (!currentProductId) {
+        // Generate a new ID for new product to use in storage path and database
+        const newProductRef = push(ref(database, 'products'));
+        currentProductId = newProductRef.key;
+    }
+
     try {
-        const imageUrls = [...existingImageUrls];
-        // Upload new images
-        for (const file of newFilesToUpload) {
-            const url = await uploadImage(file);
-            if (url) {
-                imageUrls.push(url);
-            }
+        // Upload new files to Firebase Storage
+        const uploadedImageUrls = await Promise.all(
+            newFilesToUpload.map((file) => uploadImage(file, currentProductId))
+        );
+
+        // Filter out nulls from failed uploads and combine with existing URLs
+        const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls.filter(url => url !== null)];
+
+        if (finalImageUrls.length === 0) {
+             await showAlert('No images were uploaded or existing images found. Please provide at least one image.', 'Image Required');
+             addEditProductBtn.disabled = false;
+             addEditProductBtn.innerHTML = originalButtonHTML; // Restore button state
+             return;
         }
 
         const productData = {
+            id: currentProductId, // Ensure ID is part of the data
             title,
-            brand,
+            brand: brand || 'N/A', // Default to N/A if empty
             description,
             category,
             price,
             stock,
+            images: finalImageUrls, // Use the collected URLs
+            videoUrl: videoUrl || '', // Default to empty string if empty
             featured,
-            videoUrl,
-            images: imageUrls
+            updatedAt: serverTimestamp()
         };
 
         if (id) {
-            // Edit existing product
-            await set(ref(database, 'products/' + id), productData);
+            // If editing, use the existing ID and update only changed fields
+            await update(ref(database, 'products/' + id), productData);
             await showAlert('Product updated successfully!', 'Success');
         } else {
-            // Add new product
-            const newProductRef = push(ref(database, 'products'));
-            const currentProductId = newProductRef.key;
-            // Set ID and set createdAt
-            productData.id = currentProductId;
+            // If adding, use the generated ID and set initial values
             productData.createdAt = serverTimestamp();
             productData.totalStarsSum = 0; // Initialize for new products
             productData.numberOfRatings = 0; // Initialize for new products
@@ -411,8 +431,7 @@ function clearProductForm() {
     productFeaturedCheckbox.checked = false;
     productVideoInput.value = '';
     resetImagePreviews();
-    addEditProductBtn.textContent = 'Save Product';
-    addEditProductBtn.querySelector('i').className = 'fas fa-save';
+    addEditProductBtn.innerHTML = '<i class="fas fa-save"></i> Save Product'; // Reset button text
 }
 
 function listenForProducts() {
@@ -449,7 +468,7 @@ function displayAdminProducts(products) {
 
         return `
             <div class="admin-product-item">
-                <img src="${imageUrl}" alt="${product.title}">
+                <img src="${imageUrl}" alt="${product.title}" onerror="this.onerror=null;this.src='https://via.placeholder.com/65x65.png?text=Error';">
                 <div class="admin-product-details">
                     <h4>${product.title} ${featuredBadge}</h4>
                     <p><strong>Brand:</strong> ${product.brand || 'N/A'}</p>
@@ -505,8 +524,7 @@ function editProduct(id) {
         productStockInput.value = typeof product.stock === 'number' ? product.stock : '0';
         productFeaturedCheckbox.checked = product.featured || false;
         productVideoInput.value = product.videoUrl || '';
-        addEditProductBtn.textContent = 'Update Product';
-        addEditProductBtn.querySelector('i').className = 'fas fa-save'; // Ensure correct icon
+        addEditProductBtn.innerHTML = '<i class="fas fa-save"></i> Update Product'; // Update button text
         resetImagePreviews(); // Clear all current previews and file inputs first
         if (product.images && product.images.length > 0) {
             product.images.forEach((url, index) => {
@@ -521,6 +539,12 @@ function editProduct(id) {
                 }
             });
         }
+        // Switch to product management tab
+        document.querySelector('.admin-nav-tab[data-tab="product-management-tab"]').click();
+        productTitleInput.focus(); // Focus on the title input
+    } else {
+        showAlert('Product not found. It might have been deleted.', 'Product Not Found');
+        clearProductForm();
     }
 }
 
@@ -536,15 +560,18 @@ async function deleteProduct(id) {
         const product = allAdminProducts[id];
         if (product && product.images) {
             // Delete images from storage first
-            for (const imageUrl of product.images) {
+            const imagesToDeletePromises = product.images.map(async (imageUrl) => {
                 try {
-                    const imageRef = storageRef(storage, imageUrl);
+                    // Get the path from the full URL
+                    const imagePath = decodeURIComponent(imageUrl.split('/o/')[1].split('?')[0]);
+                    const imageRef = storageRef(storage, imagePath);
                     await deleteObject(imageRef);
                 } catch (imgError) {
                     // Ignore errors if image doesn't exist in storage (e.g., placeholder or external URL)
                     console.warn(`Could not delete image ${imageUrl}:`, imgError.message);
                 }
-            }
+            });
+            await Promise.all(imagesToDeletePromises);
         }
         await remove(ref(database, 'products/' + id));
         await showAlert('Product deleted successfully!', 'Success');
@@ -575,7 +602,7 @@ function listenForOrders() {
         }
         displayOrders(pendingOrders, orderListContainer, false);
         displayOrders(completedOrders, completedOrderListContainer, true);
-        updateDashboardCounts(totalProductsCountEl.textContent, Object.keys(pendingOrders).length, Object.keys(completedOrders).length);
+        updateDashboardCounts(Object.keys(allAdminProducts).length, Object.keys(pendingOrders).length, Object.keys(completedOrders).length);
     }, (error) => {
         console.error("Error listening for orders:", error);
         orderListContainer.innerHTML = `<p class="no-items-message error-message">Error loading orders. Firebase: ${error.message}.</p>`;
@@ -594,8 +621,11 @@ function displayOrders(orders, containerEl, isCompletedTab) {
     const orderListHtml = Object.values(orders).map(order => {
         const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
         const completedDate = order.completedDate ? new Date(order.completedDate).toLocaleString() : 'N/A';
-        const productName = allAdminProducts[order.productId] ? allAdminProducts[order.productId].title : 'Product Not Found';
-        const productPrice = allAdminProducts[order.productId] ? allAdminProducts[order.productId].price.toLocaleString() : 'N/A';
+        // Assuming order.items is an object of product items, or fallback to single productTitle
+        const productDisplay = order.items ?
+            Object.values(order.items).map(item => `${item.title} (x${item.quantity || 1})`).join(', ') :
+            (order.productTitle || 'Product Not Found');
+        const totalAmount = order.totalAmount ? `PKR ${order.totalAmount.toLocaleString()}` : 'N/A';
         const statusBadgeClass = order.status === 'completed' ? 'success' : (order.status === 'cancelled' ? 'danger' : 'info');
 
         let actionButtons = '';
@@ -610,7 +640,8 @@ function displayOrders(orders, containerEl, isCompletedTab) {
             <div class="admin-order-item">
                 <div class="order-details">
                     <h4>Order ID: ${order.id.substring(0, 8)}...</h4>
-                    <p><strong>Product:</strong> ${productName} (PKR ${productPrice})</p>
+                    <p><strong>Products:</strong> ${productDisplay}</p>
+                    <p><strong>Total:</strong> ${totalAmount}</p>
                     <p><strong>Customer:</strong> ${order.customerName}</p>
                     <p><strong>Phone:</strong> ${order.customerPhone}</p>
                     <p><strong>Address:</strong> ${order.customerAddress}</p>
@@ -654,15 +685,9 @@ async function completeOrder(orderId) {
     }
     try {
         const orderRef = ref(database, 'orders/' + orderId);
-        const snapshot = await get(child(orderRef, '')); // Use child('') to get the ref for 'orderId' itself
-        const orderData = snapshot.val();
-        if (orderData) {
-            // Update status and add completion timestamp
-            await set(orderRef, { ...orderData, status: 'completed', completedDate: serverTimestamp() }); // Use set to update the whole object
-            await showAlert(`Order ...${orderId.substring(orderId.length - 6)} marked as completed and moved to history.`, 'Order Completed');
-        } else {
-            await showAlert('Order not found in pending list. It might have been processed already or does not exist.', 'Order Not Found');
-        }
+        // Use update to only change specific fields
+        await update(orderRef, { status: 'completed', completedDate: serverTimestamp() });
+        await showAlert(`Order ...${orderId.substring(orderId.length - 6)} marked as completed and moved to history.`, 'Order Completed');
     } catch (error) {
         await showAlert('Error completing order: ' + error.message, 'Completion Error');
         console.error('Error completing order:', error);
@@ -675,16 +700,10 @@ async function cancelOrder(orderId) {
         return;
     }
     try {
+        // Use update to change status to cancelled and add completion timestamp
         const orderRef = ref(database, 'orders/' + orderId);
-        const snapshot = await get(child(orderRef, '')); // Use child('') to get the ref for 'orderId' itself
-        const orderData = snapshot.val();
-        if (orderData) {
-            // Update status to cancelled and add completion timestamp
-            await set(orderRef, { ...orderData, status: 'cancelled', completedDate: serverTimestamp() }); // Use set to update the whole object
-            await showAlert(`Order ...${orderId.substring(orderId.length - 6)} cancelled and moved to history.`, 'Order Cancelled');
-        } else {
-            await showAlert('Order not found. It might have been processed already or does not exist.', 'Order Not Found');
-        }
+        await update(orderRef, { status: 'cancelled', completedDate: serverTimestamp() });
+        await showAlert(`Order ...${orderId.substring(orderId.length - 6)} cancelled and moved to history.`, 'Order Cancelled');
     } catch (error) {
         await showAlert('Error cancelling order: ' + error.message, 'Cancellation Error');
         console.error('Error cancelling order:', error);
@@ -744,7 +763,7 @@ function filterRatingsByTimeframe(timeframe) {
     const filtered = {};
     for (const ratingId in allRatings) {
         const rating = allRatings[ratingId];
-        // Firebase server timestamps are objects, convert to milliseconds
+        // Firebase server timestamps are numbers (milliseconds since epoch)
         const ratingTimestamp = rating.timestamp;
         if (ratingTimestamp >= cutoffDate) {
             filtered[ratingId] = rating;
@@ -768,18 +787,18 @@ function getProductAggregates(ratings) {
 
     // Aggregate order counts for products within the same timeframe as ratings
     const timeframe = analyticsTimeframeSelect.value;
+    const now = Date.now();
+    let orderCutoffDate = 0;
+    if (timeframe === 'week') {
+        orderCutoffDate = now - (7 * 24 * 60 * 60 * 1000);
+    } else if (timeframe === 'month') {
+        orderCutoffDate = now - (30 * 24 * 60 * 60 * 1000);
+    }
+
     for (const orderId in allOrders) {
         const order = allOrders[orderId];
         const orderTimestamp = order.orderDate; // Assuming orderDate is a timestamp
-        const now = Date.now();
-        let cutoffDate = 0;
-        if (timeframe === 'week') {
-            cutoffDate = now - (7 * 24 * 60 * 60 * 1000);
-        } else if (timeframe === 'month') {
-            cutoffDate = now - (30 * 24 * 60 * 60 * 1000);
-        }
-
-        if (orderTimestamp >= cutoffDate && productAggregates[order.productId]) {
+        if (orderTimestamp >= orderCutoffDate && productAggregates[order.productId]) {
             productAggregates[order.productId].orderCount += 1;
         }
     }
@@ -794,7 +813,7 @@ function renderProductRatingsChart(productAggregates) {
 
     const labels = [];
     const data = [];
-    const productData = []; // To store product info for tooltips
+    const productInfoForTooltip = []; // To store product info for tooltips
 
     // Sort products by average rating (descending)
     const sortedProductIds = Object.keys(productAggregates).sort((a, b) => {
@@ -810,7 +829,7 @@ function renderProductRatingsChart(productAggregates) {
             const averageRating = aggregate.count > 0 ? (aggregate.totalStars / aggregate.count) : 0;
             labels.push(product.title);
             data.push(averageRating);
-            productData.push({
+            productInfoForTooltip.push({
                 numberOfRatings: aggregate.count,
                 orderCount: aggregate.orderCount
             });
@@ -844,7 +863,7 @@ function renderProductRatingsChart(productAggregates) {
                             let label = context.dataset.label || '';
                             if (label) { label += ': '; }
                             if (context.parsed.y !== null) { label += context.parsed.y.toFixed(2); }
-                            const product = productData[context.dataIndex];
+                            const product = productInfoForTooltip[context.dataIndex];
                             if (product) {
                                 label += ` (${product.numberOfRatings} reviews, ${product.orderCount} orders)`;
                             }
@@ -1021,7 +1040,6 @@ function renderProductComparisonChart(product1, product2, product1AvgRating, pro
     });
 }
 
-// Function to get orders for product in a specific timeframe (used by winner function)
 function getOrdersForProductInTimeframe(productId, timeframe) {
     const now = Date.now();
     let cutoffDate = 0;
@@ -1045,10 +1063,6 @@ function getOrdersForProductInTimeframe(productId, timeframe) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (auth.currentUser && adminDashboard.style.display === 'block') {
-        // Already handled by onAuthStateChanged
-    } else if (!auth.currentUser) {
-        authSection.style.display = 'block';
-        adminDashboard.style.display = 'none';
-    }
+    // Initial display based on auth state (handled by onAuthStateChanged)
+    // No direct display logic needed here, as onAuthStateChanged will run on load.
 });
