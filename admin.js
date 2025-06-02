@@ -1,9 +1,3 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -18,8 +12,26 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+const app = firebase.initializeApp(firebaseConfig);
+const analytics = firebase.analytics();
+const auth = firebase.auth();
+const database = firebase.database();
+const storage = firebase.storage();
+const storageRef = firebase.storage.ref;
+const uploadBytes = firebase.storage.uploadBytes;
+const getDownloadURL = firebase.storage.getDownloadURL;
+const deleteObject = firebase.storage.deleteObject;
+const ref = firebase.database.ref;
+const onValue = firebase.database.onValue;
+const push = firebase.database.push;
+const set = firebase.database.set;
+const remove = firebase.database.remove;
+const get = firebase.database.get;
+const child = firebase.database.child;
+const signInWithEmailAndPassword = firebase.auth.signInWithEmailAndPassword;
+const signOut = firebase.auth.signOut;
+const onAuthStateChanged = firebase.auth.onAuthStateChanged;
+const serverTimestamp = firebase.database.ServerValue.TIMESTAMP;
 
 // Admin UI Elements
 const authSection = document.getElementById('auth-section');
@@ -280,41 +292,17 @@ onAuthStateChanged(auth, (user) => {
         currentAdminUID = null;
         authSection.style.display = 'block';
         adminDashboard.style.display = 'none';
-        // Clear any displayed products/orders when logged out
-        productListContainer.innerHTML = '<p class="no-items-message">No products available.</p>';
-        orderListContainer.innerHTML = '<p class="no-items-message">No pending orders.</p>';
-        completedOrderListContainer.innerHTML = '<p class="no-items-message">No completed orders yet.</p>';
-        updateDashboardCounts(0, 0, 0); // Reset dashboard counts
-        // Destroy charts if they exist
-        if (productRatingsChart) productRatingsChart.destroy();
-        if (productComparisonChart) productComparisonChart.destroy();
+        adminEmailInput.value = '';
+        adminPasswordInput.value = '';
     }
 });
 
-// --- Product Management Logic ---
-clearFormBtn.addEventListener('click', clearProductForm);
-
-function clearProductForm() {
-    productIdInput.value = '';
-    productTitleInput.value = '';
-    productBrandInput.value = '';
-    productDescriptionInput.value = '';
-    productCategorySelect.value = 'Fabric'; // Default category
-    productPriceInput.value = '';
-    productStockInput.value = '';
-    productFeaturedCheckbox.checked = false;
-    productVideoInput.value = '';
-    resetImagePreviews(); // Clear all image previews and file inputs
-    addEditProductBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Add Product';
-    productTitleInput.focus();
-}
-
-// Helper function to upload an image and return its URL
-async function uploadImageAndGetURL(file, productId) {
+// --- Firebase Product Operations ---
+async function uploadImage(file) {
     if (!file) return null;
-    const storageRefPath = `product_images/${productId}/${Date.now()}_${file.name}`; // Unique filename
-    const imageRef = storageRef(storage, storageRefPath);
-    const snapshot = await uploadBytes(imageRef, file);
+    const fileName = `${Date.now()}_${file.name}`;
+    const storageReference = storageRef(storage, 'product_images/' + fileName);
+    const snapshot = await uploadBytes(storageReference, file);
     const downloadURL = await getDownloadURL(snapshot.ref);
     return downloadURL;
 }
@@ -348,60 +336,50 @@ addEditProductBtn.addEventListener('click', async () => {
         }
     });
 
-
-    // Basic validation
-    if (!title || !description || !category || isNaN(price) || price <= 0 || isNaN(stock) || stock < 0 || (existingImageUrls.length === 0 && newFilesToUpload.length === 0)) {
-        await showAlert('Please fill in all required fields (Title, Description, Category, Price > 0, Stock >= 0, at least one image).', 'Validation Error');
+    if (!title || !price || isNaN(price) || !stock || isNaN(stock)) {
+        await showAlert('Please fill in all required product fields: Title, Price, and Stock.', 'Validation Error');
+        return;
+    }
+    if (price <= 0 || stock < 0) {
+        await showAlert('Price must be greater than 0, and Stock cannot be negative.', 'Validation Error');
         return;
     }
 
     addEditProductBtn.disabled = true;
-    const originalButtonHTML = addEditProductBtn.innerHTML; // Store original button content
+    const originalButtonHTML = addEditProductBtn.innerHTML;
     addEditProductBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
-    let currentProductId = id;
-    if (!currentProductId) {
-        // Generate a temporary ID for new product to use in storage path, if not editing
-        const tempRef = push(ref(database, 'products'));
-        currentProductId = tempRef.key;
-    }
-
     try {
-        // Upload new files to Firebase Storage
-        const uploadedImageUrls = await Promise.all(
-            newFilesToUpload.map((file) => uploadImageAndGetURL(file, currentProductId))
-        );
-
-        // Filter out nulls from failed uploads and combine with existing URLs
-        const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls.filter(url => url !== null)];
-
-        if (finalImageUrls.length === 0) {
-             await showAlert('No images were uploaded or existing images found. Please provide at least one image.', 'Image Required');
-             addEditProductBtn.disabled = false;
-             addEditProductBtn.innerHTML = originalButtonHTML; // Restore button state
-             return;
+        const imageUrls = [...existingImageUrls];
+        // Upload new images
+        for (const file of newFilesToUpload) {
+            const url = await uploadImage(file);
+            if (url) {
+                imageUrls.push(url);
+            }
         }
 
         const productData = {
             title,
-            brand: brand || 'N/A',
+            brand,
             description,
             category,
             price,
             stock,
-            images: finalImageUrls, // Use the collected URLs
-            videoUrl: videoUrl || '',
             featured,
-            updatedAt: serverTimestamp()
+            videoUrl,
+            images: imageUrls
         };
 
         if (id) {
-            // If editing, use the existing ID
-            productData.id = id;
+            // Edit existing product
             await set(ref(database, 'products/' + id), productData);
             await showAlert('Product updated successfully!', 'Success');
         } else {
-            // If adding, use the generated temporary ID and set createdAt
+            // Add new product
+            const newProductRef = push(ref(database, 'products'));
+            const currentProductId = newProductRef.key;
+            // Set ID and set createdAt
             productData.id = currentProductId;
             productData.createdAt = serverTimestamp();
             productData.totalStarsSum = 0; // Initialize for new products
@@ -420,6 +398,42 @@ addEditProductBtn.addEventListener('click', async () => {
     }
 });
 
+clearFormBtn.addEventListener('click', clearProductForm);
+
+function clearProductForm() {
+    productIdInput.value = '';
+    productTitleInput.value = '';
+    productBrandInput.value = '';
+    productDescriptionInput.value = '';
+    productCategorySelect.value = 'Fabric';
+    productPriceInput.value = '';
+    productStockInput.value = '';
+    productFeaturedCheckbox.checked = false;
+    productVideoInput.value = '';
+    resetImagePreviews();
+    addEditProductBtn.textContent = 'Save Product';
+    addEditProductBtn.querySelector('i').className = 'fas fa-save';
+}
+
+function listenForProducts() {
+    const productsRef = ref(database, 'products');
+    onValue(productsRef, (snapshot) => {
+        allAdminProducts = {};
+        if (snapshot.exists()) {
+            snapshot.forEach(childSnapshot => {
+                const product = childSnapshot.val();
+                allAdminProducts[product.id] = product;
+            });
+        }
+        displayAdminProducts(allAdminProducts);
+        updateDashboardCounts(Object.keys(allAdminProducts).length, pendingOrdersCountEl.textContent, completedOrdersCountEl.textContent);
+        populateCompareProductSelects(allAdminProducts); // Populate selects for comparison
+    }, (error) => {
+        console.error("Error listening for products:", error);
+        productListContainer.innerHTML = `<p class="no-items-message error-message">Error loading products. Firebase: ${error.message}.</p>`;
+        showAlert(`Error loading products: ${error.message}.`, 'Data Error');
+    });
+}
 
 function displayAdminProducts(products) {
     productListContainer.innerHTML = '';
@@ -427,72 +441,43 @@ function displayAdminProducts(products) {
         productListContainer.innerHTML = '<p class="no-items-message">No products available.</p>';
         return;
     }
-
     const productListHtml = Object.values(products).map(product => {
-        const imageUrl = product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/65x65?text=No+Image';
-        const averageRating = product.numberOfRatings > 0 ? (product.totalStarsSum / product.numberOfRatings).toFixed(1) : 'N/A';
-        const ratingDisplay = product.numberOfRatings > 0 ? `Rating: ${averageRating}/7 (${product.numberOfRatings} reviews)` : 'No ratings yet';
+        const imageUrl = product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/65x65.png?text=No+Image';
+        const stockStatus = product.stock > 0 ? `<span class="status-badge success">In Stock (${product.stock})</span>` : `<span class="status-badge danger">Out of Stock</span>`;
+        const featuredBadge = product.featured ? `<span class="status-badge info">Featured</span>` : '';
+        const averageRating = typeof product.averageRating === 'number' ? product.averageRating.toFixed(1) : (product.averageRating || 'N/A');
 
         return `
             <div class="admin-product-item">
-                <img src="${imageUrl}" alt="${product.title}" onerror="this.onerror=null;this.src='https://via.placeholder.com/65x65?text=Error';">
+                <img src="${imageUrl}" alt="${product.title}">
                 <div class="admin-product-details">
-                    <h4>${product.title} (ID: ${product.id.substring(0, 6)}...)</h4>
-                    <p>${product.brand} - ${product.category}</p>
-                    <p>Price: PKR ${product.price.toLocaleString()}</p>
-                    <p class="product-stock-info">Stock: ${product.stock}</p>
-                    <p class="product-rating-info">${ratingDisplay}</p>
+                    <h4>${product.title} ${featuredBadge}</h4>
+                    <p><strong>Brand:</strong> ${product.brand || 'N/A'}</p>
+                    <p><strong>Category:</strong> ${product.category}</p>
+                    <p><strong>Price:</strong> PKR ${product.price.toLocaleString()}</p>
+                    <p><strong>Stock:</strong> ${stockStatus}</p>
+                    <p><strong>Rating:</strong> ${averageRating} / 7 (${product.numberOfRatings || 0} reviews)</p>
                 </div>
                 <div class="admin-product-actions">
-                    <button class="admin-button secondary edit-product-btn" data-id="${product.id}"><i class="fas fa-edit"></i> Edit</button>
-                    <button class="admin-button danger delete-product-btn" data-id="${product.id}"><i class="fas fa-trash"></i> Delete</button>
+                    <button class="admin-button primary small-button" onclick="editProduct('${product.id}')"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="admin-button danger small-button" onclick="confirmDeleteProduct('${product.id}', '${product.title}')"><i class="fas fa-trash"></i> Delete</button>
                 </div>
             </div>
         `;
     }).join('');
     productListContainer.innerHTML = productListHtml;
-
-    document.querySelectorAll('.edit-product-btn').forEach(button => {
-        button.addEventListener('click', (e) => editProduct(e.target.dataset.id));
-    });
-    document.querySelectorAll('.delete-product-btn').forEach(button => {
-        button.addEventListener('click', async (e) => {
-            const confirmed = await showConfirm(`Are you sure you want to delete product ${e.target.dataset.id.substring(0, 6)}...? This action cannot be undone.`, 'Confirm Deletion', 'Delete', 'Cancel', 'danger');
-            if (confirmed) {
-                deleteProduct(e.target.dataset.id);
-            }
-        });
-    });
-}
-
-function listenForProducts() {
-    const productsRef = ref(database, 'products');
-    onValue(productsRef, (snapshot) => {
-        allAdminProducts = snapshot.val() || {};
-        displayAdminProducts(allAdminProducts);
-        updateDashboardCounts(Object.keys(allAdminProducts).length, pendingOrdersCountEl.textContent, completedOrdersCountEl.textContent);
-        populateProductSelects(); // Update product selects for analytics
-    }, (error) => {
-        console.error("Error listening for products:", error);
-        productListContainer.innerHTML = `<p class="no-items-message error-message">Error loading products. Firebase: ${error.message}. Check console and Firebase rules.</p>`;
-        showAlert(`Error loading products: ${error.message}. Check console and Firebase rules.`, 'Data Error');
-    });
 }
 
 adminProductSearchBtn.addEventListener('click', () => {
     const searchTerm = adminProductSearchInput.value.toLowerCase().trim();
-    if (!searchTerm) {
+    if (searchTerm === '') {
         displayAdminProducts(allAdminProducts);
         return;
     }
     const filtered = {};
     for (const productId in allAdminProducts) {
         const product = allAdminProducts[productId];
-        if (
-            (product.title && product.title.toLowerCase().includes(searchTerm)) ||
-            (productId && productId.toLowerCase().includes(searchTerm)) ||
-            (product.brand && product.brand.toLowerCase().includes(searchTerm))
-        ) {
+        if (product.title.toLowerCase().includes(searchTerm) || (product.brand && product.brand.toLowerCase().includes(searchTerm))) {
             filtered[productId] = product;
         }
     }
@@ -508,7 +493,6 @@ adminProductSearchInput.addEventListener('keyup', (event) => {
     }
 });
 
-
 function editProduct(id) {
     const product = allAdminProducts[id];
     if (product) {
@@ -521,48 +505,47 @@ function editProduct(id) {
         productStockInput.value = typeof product.stock === 'number' ? product.stock : '0';
         productFeaturedCheckbox.checked = product.featured || false;
         productVideoInput.value = product.videoUrl || '';
-
+        addEditProductBtn.textContent = 'Update Product';
+        addEditProductBtn.querySelector('i').className = 'fas fa-save'; // Ensure correct icon
         resetImagePreviews(); // Clear all current previews and file inputs first
-
         if (product.images && product.images.length > 0) {
             product.images.forEach((url, index) => {
                 if (index < productImagePreviews.length) {
                     const previewEl = productImagePreviews[index];
                     const placeholderEl = productImagePlaceholders[index];
                     const removeBtn = productImageRemoveBtns[index];
-
                     previewEl.src = url;
                     previewEl.style.display = 'block';
                     placeholderEl.style.display = 'none';
-                    removeBtn.style.display = 'inline-block'; // Show remove button for existing image
-
-                    previewEl.onerror = () => { // Fallback if existing image URL fails to load
-                        previewEl.style.display = 'none';
-                        placeholderEl.style.display = 'flex';
-                        removeBtn.style.display = 'none'; // Hide remove button if image is broken
-                        previewEl.src = ''; // Clear src
-                        showAlert(`Failed to load image for ${product.title}. Please check the URL or re-upload.`, 'Image Load Error');
-                    };
+                    removeBtn.style.display = 'inline-block';
                 }
             });
         }
-        addEditProductBtn.innerHTML = '<i class="fas fa-save"></i> Update Product';
-        const productTab = document.querySelector('.admin-nav-tab[data-tab="product-management-tab"]');
-        if (productTab) productTab.click();
-        productTitleInput.focus();
-        productIdInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-        showAlert('Product not found. It might have been deleted.', 'Product Not Found');
-        clearProductForm();
+    }
+}
+
+async function confirmDeleteProduct(id, title) {
+    const confirmed = await showConfirm(`Are you sure you want to delete product "${title}"? This action cannot be undone.`, 'Confirm Delete', 'Delete', 'Cancel', 'danger');
+    if (confirmed) {
+        deleteProduct(id);
     }
 }
 
 async function deleteProduct(id) {
     try {
-        // TODO: Optionally delete images from Firebase Storage here as well
-        // This requires listing items in a folder, which can be complex if not using specific file paths.
-        // For now, only deleting database entry.
-
+        const product = allAdminProducts[id];
+        if (product && product.images) {
+            // Delete images from storage first
+            for (const imageUrl of product.images) {
+                try {
+                    const imageRef = storageRef(storage, imageUrl);
+                    await deleteObject(imageRef);
+                } catch (imgError) {
+                    // Ignore errors if image doesn't exist in storage (e.g., placeholder or external URL)
+                    console.warn(`Could not delete image ${imageUrl}:`, imgError.message);
+                }
+            }
+        }
         await remove(ref(database, 'products/' + id));
         await showAlert('Product deleted successfully!', 'Success');
     } catch (error) {
@@ -571,30 +554,28 @@ async function deleteProduct(id) {
     }
 }
 
-
-// --- Order Management Logic ---
+// --- Firebase Order Operations ---
 function listenForOrders() {
     const ordersRef = ref(database, 'orders');
     onValue(ordersRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        allOrders = data; // Store all orders for analytics
+        allOrders = {};
         const pendingOrders = {};
         const completedOrders = {};
-
-        for (const orderId in allOrders) {
-            const order = { id: orderId, ...allOrders[orderId] };
-            if (order.status === 'completed' || order.status === 'cancelled') {
-                completedOrders[orderId] = order;
-            } else {
-                pendingOrders[orderId] = order;
-            }
+        if (snapshot.exists()) {
+            snapshot.forEach(childSnapshot => {
+                const orderId = childSnapshot.key;
+                allOrders[orderId] = childSnapshot.val();
+                const order = { id: orderId, ...allOrders[orderId] };
+                if (order.status === 'completed' || order.status === 'cancelled') {
+                    completedOrders[orderId] = order;
+                } else {
+                    pendingOrders[orderId] = order;
+                }
+            });
         }
-
         displayOrders(pendingOrders, orderListContainer, false);
         displayOrders(completedOrders, completedOrderListContainer, true);
-
         updateDashboardCounts(totalProductsCountEl.textContent, Object.keys(pendingOrders).length, Object.keys(completedOrders).length);
-
     }, (error) => {
         console.error("Error listening for orders:", error);
         orderListContainer.innerHTML = `<p class="no-items-message error-message">Error loading orders. Firebase: ${error.message}.</p>`;
@@ -606,65 +587,58 @@ function listenForOrders() {
 function displayOrders(orders, containerEl, isCompletedTab) {
     containerEl.innerHTML = '';
     if (Object.keys(orders).length === 0) {
-        containerEl.innerHTML = `<p class="no-items-message">No ${isCompletedTab ? 'completed' : 'pending'} orders.</p>`;
+        containerEl.innerHTML = `<p class="no-items-message">${isCompletedTab ? 'No completed orders.' : 'No pending orders.'}</p>`;
         return;
     }
 
-    const orderListHtml = Object.values(orders).sort((a, b) => {
-        // Sort by timestamp, newest first
-        const dateA = new Date(a.orderDate || 0);
-        const dateB = new Date(b.orderDate || 0);
-        return dateB - dateA;
-    }).map(order => {
+    const orderListHtml = Object.values(orders).map(order => {
         const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
-        const productTitles = order.items ? Object.values(order.items).map(item => `${item.title} (x${item.quantity})`).join(', ') : (order.productTitle || 'Product Name Missing'); // Fallback to productTitle from order
-        const orderStatusClass = order.status || 'pending'; // Default to pending if status is missing
-        let actionsHtml = '';
+        const completedDate = order.completedDate ? new Date(order.completedDate).toLocaleString() : 'N/A';
+        const productName = allAdminProducts[order.productId] ? allAdminProducts[order.productId].title : 'Product Not Found';
+        const productPrice = allAdminProducts[order.productId] ? allAdminProducts[order.productId].price.toLocaleString() : 'N/A';
+        const statusBadgeClass = order.status === 'completed' ? 'success' : (order.status === 'cancelled' ? 'danger' : 'info');
 
+        let actionButtons = '';
         if (!isCompletedTab) {
-            actionsHtml = `
-                <div class="order-actions">
-                    <button class="admin-button success mark-completed" data-order-id="${order.id}"><i class="fas fa-check-circle"></i> Mark Completed</button>
-                    <button class="admin-button danger mark-cancelled" data-order-id="${order.id}"><i class="fas fa-times-circle"></i> Cancel Order</button>
-                </div>
+            actionButtons = `
+                <button class="admin-button primary small-button complete-order-btn" data-order-id="${order.id}"><i class="fas fa-check"></i> Complete</button>
+                <button class="admin-button danger small-button cancel-order-btn" data-order-id="${order.id}"><i class="fas fa-times"></i> Cancel</button>
             `;
-        } else {
-            let processedDateString = 'Processing date N/A';
-            if (order.completedDate) {
-                processedDateString = new Date(order.completedDate).toLocaleString();
-            } else if (order.orderDate) { // Fallback for completed orders that might miss completedDate (e.g. old data)
-                processedDateString = `(Ordered: ${new Date(order.orderDate).toLocaleString()})`;
-            }
-            actionsHtml = `<p><em>Order processed on: ${processedDateString}</em></p>`;
         }
 
         return `
-            <div class="order-item">
-                <h4>Order ID: ${order.id.substring(0, 6)}... for ${order.customerName || 'N/A'}</h4>
-                <p><strong>Products:</strong> ${productTitles}</p>
-                <p><strong>Total Amount:</strong> PKR ${order.totalAmount ? order.totalAmount.toLocaleString() : '0.00'}</p>
-                <p><strong>Status:</strong> <span class="status ${orderStatusClass}">${orderStatusClass}</span></p>
-                <p><strong>Order Date:</strong> ${orderDate}</p>
-                <p><strong>Address:</strong> ${order.customerAddress || 'N/A'}</p>
-                <p><strong>Contact:</strong> ${order.customerContact || 'N/A'}</p>
-                ${actionsHtml}
+            <div class="admin-order-item">
+                <div class="order-details">
+                    <h4>Order ID: ${order.id.substring(0, 8)}...</h4>
+                    <p><strong>Product:</strong> ${productName} (PKR ${productPrice})</p>
+                    <p><strong>Customer:</strong> ${order.customerName}</p>
+                    <p><strong>Phone:</strong> ${order.customerPhone}</p>
+                    <p><strong>Address:</strong> ${order.customerAddress}</p>
+                    <p><strong>Order Date:</strong> ${orderDate}</p>
+                    ${isCompletedTab ? `<p><strong>Completion Date:</strong> ${completedDate}</p>` : ''}
+                    <p><strong>Status:</strong> <span class="status-badge ${statusBadgeClass}">${order.status.toUpperCase()}</span></p>
+                </div>
+                <div class="order-actions">
+                    ${actionButtons}
+                </div>
             </div>
         `;
     }).join('');
     containerEl.innerHTML = orderListHtml;
 
     if (!isCompletedTab) {
-        document.querySelectorAll('.mark-completed').forEach(button => {
+        // Add event listeners for new complete/cancel buttons
+        containerEl.querySelectorAll('.complete-order-btn').forEach(button => {
             button.addEventListener('click', async (e) => {
-                const confirmed = await showConfirm(`Are you sure you want to mark order ...${e.target.dataset.orderId.substring(e.target.dataset.orderId.length - 6)} as completed?`, 'Confirm Completion');
+                const confirmed = await showConfirm(`Mark order ...${e.target.dataset.orderId.substring(e.target.dataset.orderId.length - 6)} as completed?`, 'Confirm Completion', 'Complete', 'No', 'primary');
                 if (confirmed) {
                     completeOrder(e.target.dataset.orderId);
                 }
             });
         });
-        document.querySelectorAll('.mark-cancelled').forEach(button => {
+        containerEl.querySelectorAll('.cancel-order-btn').forEach(button => {
             button.addEventListener('click', async (e) => {
-                const confirmed = await showConfirm(`Are you sure you want to cancel and delete order ...${e.target.dataset.orderId.substring(e.target.dataset.orderId.length - 6)}? This action cannot be undone.`, 'Confirm Cancellation', 'Cancel Order', 'No', 'danger');
+                const confirmed = await showConfirm(`Cancel order ...${e.target.dataset.orderId.substring(e.target.dataset.orderId.length - 6)}? This action cannot be undone.`, 'Confirm Cancellation', 'Cancel Order', 'No', 'danger');
                 if (confirmed) {
                     cancelOrder(e.target.dataset.orderId);
                 }
@@ -678,25 +652,20 @@ async function completeOrder(orderId) {
         await showAlert('Error: Order ID is missing for completion.', 'Error');
         return;
     }
-
     try {
         const orderRef = ref(database, 'orders/' + orderId);
-        const snapshot = await get(orderRef);
+        const snapshot = await get(child(orderRef, '')); // Use child('') to get the ref for 'orderId' itself
         const orderData = snapshot.val();
-
         if (orderData) {
             // Update status and add completion timestamp
-            await update(orderRef, {
-                status: 'completed',
-                completedDate: serverTimestamp() // Add completion timestamp
-            });
+            await set(orderRef, { ...orderData, status: 'completed', completedDate: serverTimestamp() }); // Use set to update the whole object
             await showAlert(`Order ...${orderId.substring(orderId.length - 6)} marked as completed and moved to history.`, 'Order Completed');
         } else {
             await showAlert('Order not found in pending list. It might have been processed already or does not exist.', 'Order Not Found');
         }
     } catch (error) {
         await showAlert('Error completing order: ' + error.message, 'Completion Error');
-        console.error('Order completion error:', error);
+        console.error('Error completing order:', error);
     }
 }
 
@@ -706,63 +675,77 @@ async function cancelOrder(orderId) {
         return;
     }
     try {
-        await remove(ref(database, 'orders/' + orderId));
-        await showAlert(`Order ...${orderId.substring(orderId.length - 6)} has been cancelled and removed.`, 'Order Cancelled');
+        const orderRef = ref(database, 'orders/' + orderId);
+        const snapshot = await get(child(orderRef, '')); // Use child('') to get the ref for 'orderId' itself
+        const orderData = snapshot.val();
+        if (orderData) {
+            // Update status to cancelled and add completion timestamp
+            await set(orderRef, { ...orderData, status: 'cancelled', completedDate: serverTimestamp() }); // Use set to update the whole object
+            await showAlert(`Order ...${orderId.substring(orderId.length - 6)} cancelled and moved to history.`, 'Order Cancelled');
+        } else {
+            await showAlert('Order not found. It might have been processed already or does not exist.', 'Order Not Found');
+        }
     } catch (error) {
         await showAlert('Error cancelling order: ' + error.message, 'Cancellation Error');
-        console.error('Order cancellation error:', error);
+        console.error('Error cancelling order:', error);
     }
 }
 
-// --- Dashboard Summary Updates ---
-function updateDashboardCounts(productsCount, pendingCount, completedCount) {
-    totalProductsCountEl.textContent = productsCount || 0;
-    pendingOrdersCountEl.textContent = pendingCount || 0;
-    completedOrdersCountEl.textContent = completedCount || 0;
+
+function updateDashboardCounts(totalProducts, pendingOrders, completedOrders) {
+    totalProductsCountEl.textContent = totalProducts;
+    pendingOrdersCountEl.textContent = pendingOrders;
+    completedOrdersCountEl.textContent = completedOrders;
 }
 
-// --- Analytics Logic ---
+// --- Firebase Analytics Operations ---
 function listenForRatings() {
     const ratingsRef = ref(database, 'ratings');
     onValue(ratingsRef, (snapshot) => {
-        allRatings = snapshot.val() || {};
-        refreshAnalytics(); // Refresh analytics whenever ratings change
+        allRatings = {};
+        if (snapshot.exists()) {
+            snapshot.forEach(childSnapshot => {
+                const rating = childSnapshot.val();
+                allRatings[rating.id] = rating;
+            });
+        }
+        refreshAnalytics(); // Refresh analytics charts/data whenever ratings change
     }, (error) => {
         console.error("Error listening for ratings:", error);
-        showAlert(`Error loading ratings data: ${error.message}.`, 'Data Error');
+        showAlert(`Error loading ratings: ${error.message}.`, 'Data Error');
     });
 }
 
-refreshAnalyticsBtn.addEventListener('click', refreshAnalytics);
 analyticsTimeframeSelect.addEventListener('change', refreshAnalytics);
-compareProductsBtn.addEventListener('click', renderComparisonChart);
-
+refreshAnalyticsBtn.addEventListener('click', refreshAnalytics);
 
 function refreshAnalytics() {
     const timeframe = analyticsTimeframeSelect.value;
     const filteredRatings = filterRatingsByTimeframe(timeframe);
-
-    renderProductRatingsChart(filteredRatings);
-    updateWinnerOfTheWeek(filteredRatings);
-    populateProductSelects(); // Ensure selects are updated with latest products
-    renderComparisonChart(); // Re-render comparison chart with potentially new data
+    const productAggregates = getProductAggregates(filteredRatings);
+    renderProductRatingsChart(productAggregates);
+    updateWinnerProduct(productAggregates);
+    // Don't call populateCompareProductSelects here, it's called in listenForProducts
+    // because products are needed for the options, which are less frequent than ratings changes.
+    // When comparison is triggered by button, it will use the current allAdminProducts.
 }
+
 
 function filterRatingsByTimeframe(timeframe) {
     const now = Date.now();
-    let cutoffDate = 0; // All time
+    let cutoffDate = 0; // Default to all time
 
     if (timeframe === 'week') {
-        cutoffDate = now - (7 * 24 * 60 * 60 * 1000); // 7 days ago
+        cutoffDate = now - (7 * 24 * 60 * 60 * 1000);
     } else if (timeframe === 'month') {
-        cutoffDate = now - (30 * 24 * 60 * 60 * 1000); // 30 days ago
+        cutoffDate = now - (30 * 24 * 60 * 60 * 1000);
     }
 
     const filtered = {};
     for (const ratingId in allRatings) {
         const rating = allRatings[ratingId];
         // Firebase server timestamps are objects, convert to milliseconds
-        const ratingTimestamp = rating.timestamp && rating.timestamp.hasOwnProperty(' sentado') ? rating.timestamp.sentado : rating.timestamp;
+        const ratingTimestamp = rating.timestamp;
         if (ratingTimestamp >= cutoffDate) {
             filtered[ratingId] = rating;
         }
@@ -785,67 +768,64 @@ function getProductAggregates(ratings) {
 
     // Aggregate order counts for products within the same timeframe as ratings
     const timeframe = analyticsTimeframeSelect.value;
-    const now = Date.now();
-    let orderCutoffDate = 0;
-
-    if (timeframe === 'week') {
-        orderCutoffDate = now - (7 * 24 * 60 * 60 * 1000);
-    } else if (timeframe === 'month') {
-        orderCutoffDate = now - (30 * 24 * 60 * 60 * 1000);
-    }
-
     for (const orderId in allOrders) {
         const order = allOrders[orderId];
-        // Firebase server timestamps are objects, convert to milliseconds
-        const orderTimestamp = order.orderDate ? new Date(order.orderDate).getTime() : 0;
+        const orderTimestamp = order.orderDate; // Assuming orderDate is a timestamp
+        const now = Date.now();
+        let cutoffDate = 0;
+        if (timeframe === 'week') {
+            cutoffDate = now - (7 * 24 * 60 * 60 * 1000);
+        } else if (timeframe === 'month') {
+            cutoffDate = now - (30 * 24 * 60 * 60 * 1000);
+        }
 
-        if (orderTimestamp >= orderCutoffDate && order.productId) {
-            if (!productAggregates[order.productId]) {
-                productAggregates[order.productId] = { totalStars: 0, count: 0, orderCount: 0 };
-            }
+        if (orderTimestamp >= cutoffDate && productAggregates[order.productId]) {
             productAggregates[order.productId].orderCount += 1;
         }
     }
-
-    // Calculate average rating and sort
-    const sortedProducts = Object.keys(productAggregates)
-        .map(productId => {
-            const aggregate = productAggregates[productId];
-            const product = allAdminProducts[productId];
-            const averageRating = aggregate.count > 0 ? (aggregate.totalStars / aggregate.count) : 0;
-            return {
-                id: productId,
-                title: product ? product.title : `Unknown Product (${productId.substring(0,6)}...)`,
-                averageRating: parseFloat(averageRating.toFixed(2)),
-                numberOfRatings: aggregate.count,
-                orderCount: aggregate.orderCount
-            };
-        })
-        .sort((a, b) => b.averageRating - a.averageRating); // Sort descending by average rating
-
-    return sortedProducts;
+    return productAggregates;
 }
 
-function renderProductRatingsChart(filteredRatings) {
-    const productData = getProductAggregates(filteredRatings);
 
-    const labels = productData.map(p => p.title);
-    const data = productData.map(p => p.averageRating);
-    const colors = labels.map((_, i) => `hsl(${i * 30}, 70%, 60%)`); // Dynamic colors
-
+function renderProductRatingsChart(productAggregates) {
     if (productRatingsChart) {
-        productRatingsChart.destroy(); // Destroy existing chart before creating a new one
+        productRatingsChart.destroy();
     }
+
+    const labels = [];
+    const data = [];
+    const productData = []; // To store product info for tooltips
+
+    // Sort products by average rating (descending)
+    const sortedProductIds = Object.keys(productAggregates).sort((a, b) => {
+        const avgA = productAggregates[a].count > 0 ? productAggregates[a].totalStars / productAggregates[a].count : 0;
+        const avgB = productAggregates[b].count > 0 ? productAggregates[b].totalStars / productAggregates[b].count : 0;
+        return avgB - avgA;
+    });
+
+    sortedProductIds.forEach(productId => {
+        const aggregate = productAggregates[productId];
+        const product = allAdminProducts[productId];
+        if (product) {
+            const averageRating = aggregate.count > 0 ? (aggregate.totalStars / aggregate.count) : 0;
+            labels.push(product.title);
+            data.push(averageRating);
+            productData.push({
+                numberOfRatings: aggregate.count,
+                orderCount: aggregate.orderCount
+            });
+        }
+    });
 
     productRatingsChart = new Chart(productRatingsChartCanvas, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Average Rating (out of 7)',
+                label: 'Average Rating',
                 data: data,
-                backgroundColor: colors,
-                borderColor: colors.map(c => c.replace('70%', '50%').replace('60%', '50%')),
+                backgroundColor: 'rgba(23, 162, 184, 0.7)', // Cyan
+                borderColor: 'rgba(23, 162, 184, 1)',
                 borderWidth: 1
             }]
         },
@@ -862,12 +842,8 @@ function renderProductRatingsChart(filteredRatings) {
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y.toFixed(2);
-                            }
+                            if (label) { label += ': '; }
+                            if (context.parsed.y !== null) { label += context.parsed.y.toFixed(2); }
                             const product = productData[context.dataIndex];
                             if (product) {
                                 label += ` (${product.numberOfRatings} reviews, ${product.orderCount} orders)`;
@@ -880,7 +856,7 @@ function renderProductRatingsChart(filteredRatings) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    max: 7,
+                    max: 7, // Assuming 7-star rating
                     title: {
                         display: true,
                         text: 'Average Rating'
@@ -897,40 +873,43 @@ function renderProductRatingsChart(filteredRatings) {
     });
 }
 
-function updateWinnerOfTheWeek(filteredRatings) {
-    const productData = getProductAggregates(filteredRatings); // Already filtered by timeframe
-
-    // Find the product with the highest average rating and highest order count
+function updateWinnerProduct(productAggregates) {
     let winner = null;
-    if (productData.length > 0) {
-        // Sort by average rating descending, then by order count descending
-        const sortedByRatingAndOrders = [...productData].sort((a, b) => {
-            if (b.averageRating !== a.averageRating) {
-                return b.averageRating - a.averageRating;
+    let maxRating = 0;
+    let maxOrders = 0;
+
+    for (const productId in productAggregates) {
+        const aggregate = productAggregates[productId];
+        const product = allAdminProducts[productId];
+
+        if (product && aggregate.count > 0) { // Only consider products with ratings
+            const averageRating = aggregate.totalStars / aggregate.count;
+            if (averageRating > maxRating) {
+                maxRating = averageRating;
+                winner = { product, averageRating, orders: aggregate.orderCount };
+            } else if (averageRating === maxRating && aggregate.orderCount > (winner ? winner.orders : -1)) {
+                // If ratings are tied, prioritize by more orders
+                winner = { product, averageRating, orders: aggregate.orderCount };
             }
-            return b.orderCount - a.orderCount;
-        });
-        winner = sortedByRatingAndOrders[0];
+        }
     }
 
-    if (winner && winner.averageRating > 0) {
-        winnerProductName.textContent = winner.title;
-        winnerRatingInfo.textContent = `Average Rating: ${winner.averageRating.toFixed(2)}/7 (${winner.numberOfRatings} reviews)`;
-        winnerOrdersInfo.textContent = `Orders in timeframe: ${winner.orderCount}`;
+    if (winner) {
+        winnerProductName.textContent = winner.product.title;
+        winnerRatingInfo.textContent = `Rating: ${winner.averageRating.toFixed(2)} / 7`;
+        winnerOrdersInfo.textContent = `Orders in timeframe: ${winner.orders}`;
     } else {
-        winnerProductName.textContent = 'No clear winner this period.';
-        winnerRatingInfo.textContent = 'Not enough ratings or orders to determine a winner.';
-        winnerOrdersInfo.textContent = '';
+        winnerProductName.textContent = 'N/A';
+        winnerRatingInfo.textContent = 'Rating: N/A';
+        winnerOrdersInfo.textContent = 'Orders: N/A';
     }
 }
 
-function populateProductSelects() {
-    const productsArray = Object.values(allAdminProducts);
-    // Clear existing options
-    compareProduct1Select.innerHTML = '<option value="">Select Product</option>';
-    compareProduct2Select.innerHTML = '<option value="">Select Product</option>';
+function populateCompareProductSelects(products) {
+    compareProduct1Select.innerHTML = '<option value="">Select Product 1</option>';
+    compareProduct2Select.innerHTML = '<option value="">Select Product 2</option>';
 
-    productsArray.forEach(product => {
+    Object.values(products).forEach(product => {
         const option1 = document.createElement('option');
         option1.value = product.id;
         option1.textContent = product.title;
@@ -943,12 +922,16 @@ function populateProductSelects() {
     });
 }
 
-function renderComparisonChart() {
+compareProductsBtn.addEventListener('click', () => {
     const product1Id = compareProduct1Select.value;
     const product2Id = compareProduct2Select.value;
 
     if (!product1Id || !product2Id) {
-        if (productComparisonChart) productComparisonChart.destroy();
+        showAlert('Please select two products to compare.', 'Selection Error');
+        return;
+    }
+    if (product1Id === product2Id) {
+        showAlert('Please select two different products to compare.', 'Selection Error');
         return;
     }
 
@@ -956,22 +939,27 @@ function renderComparisonChart() {
     const product2 = allAdminProducts[product2Id];
 
     if (!product1 || !product2) {
-        showAlert('Selected products not found.', 'Comparison Error');
-        if (productComparisonChart) productComparisonChart.destroy();
+        showAlert('Selected products not found.', 'Error');
         return;
     }
 
-    const labels = ['Average Rating', 'Number of Ratings', 'Order Count'];
-    const data1 = [
-        parseFloat(product1.averageRating || 0).toFixed(2),
-        product1.numberOfRatings || 0,
-        getOrdersForProductInTimeframe(product1.id, analyticsTimeframeSelect.value)
-    ];
-    const data2 = [
-        parseFloat(product2.averageRating || 0).toFixed(2),
-        product2.numberOfRatings || 0,
-        getOrdersForProductInTimeframe(product2.id, analyticsTimeframeSelect.value)
-    ];
+    const timeframe = analyticsTimeframeSelect.value;
+    const filteredRatings = filterRatingsByTimeframe(timeframe);
+    const productAggregates = getProductAggregates(filteredRatings);
+
+    const product1Agg = productAggregates[product1Id] || { totalStars: 0, count: 0, orderCount: 0 };
+    const product2Agg = productAggregates[product2Id] || { totalStars: 0, count: 0, orderCount: 0 };
+
+    const product1AvgRating = product1Agg.count > 0 ? (product1Agg.totalStars / product1Agg.count) : 0;
+    const product2AvgRating = product2Agg.count > 0 ? (product2Agg.totalStars / product2Agg.count) : 0;
+
+    renderProductComparisonChart(product1, product2, product1AvgRating, product1Agg.orderCount, product2AvgRating, product2Agg.orderCount);
+});
+
+function renderProductComparisonChart(product1, product2, product1AvgRating, product1Orders, product2AvgRating, product2Orders) {
+    const labels = ['Average Rating', 'Orders in Timeframe'];
+    const data1 = [product1AvgRating.toFixed(2), product1Orders];
+    const data2 = [product2AvgRating.toFixed(2), product2Orders];
 
     if (productComparisonChart) {
         productComparisonChart.destroy();
@@ -985,15 +973,15 @@ function renderComparisonChart() {
                 {
                     label: product1.title,
                     data: data1,
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(0, 123, 255, 0.7)', // Info Blue
+                    borderColor: 'rgba(0, 123, 255, 1)',
                     borderWidth: 1
                 },
                 {
                     label: product2.title,
                     data: data2,
-                    backgroundColor: 'rgba(153, 102, 255, 0.6)',
-                    borderColor: 'rgba(153, 102, 255, 1)',
+                    backgroundColor: 'rgba(232, 62, 140, 0.7)', // Pink
+                    borderColor: 'rgba(232, 62, 140, 1)',
                     borderWidth: 1
                 }
             ]
@@ -1004,16 +992,14 @@ function renderComparisonChart() {
             plugins: {
                 title: {
                     display: true,
-                    text: `Comparison: ${product1.title} vs ${product2.title}`,
+                    text: `Product Comparison - ${analyticsTimeframeSelect.options[analyticsTimeframeSelect.selectedIndex].text}`,
                     font: { size: 18 }
                 },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
+                            if (label) { label += ': '; }
                             if (context.parsed.y !== null) {
                                 label += context.parsed.y;
                             }
@@ -1035,6 +1021,7 @@ function renderComparisonChart() {
     });
 }
 
+// Function to get orders for product in a specific timeframe (used by winner function)
 function getOrdersForProductInTimeframe(productId, timeframe) {
     const now = Date.now();
     let cutoffDate = 0;
@@ -1048,7 +1035,7 @@ function getOrdersForProductInTimeframe(productId, timeframe) {
     let count = 0;
     for (const orderId in allOrders) {
         const order = allOrders[orderId];
-        const orderTimestamp = order.orderDate ? new Date(order.orderDate).getTime() : 0;
+        const orderTimestamp = order.orderDate; // Assuming orderDate is a timestamp
         if (order.productId === productId && orderTimestamp >= cutoffDate) {
             count++;
         }
