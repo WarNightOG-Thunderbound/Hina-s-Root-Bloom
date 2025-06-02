@@ -270,7 +270,7 @@ adminLogoutBtn.addEventListener('click', async () => {
     }
 });
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => { // Made onAuthStateChanged async
     const adminEmail = "warnightog.thunderbound@gmail.com"; // Set your admin email here
     if (user && user.email === adminEmail) {
         currentAdminUID = user.uid;
@@ -278,7 +278,7 @@ onAuthStateChanged(auth, (user) => {
         adminDashboard.style.display = 'block';
         // Manually click the dashboard tab to ensure it's active on login
         document.querySelector('.admin-nav-tab[data-tab="dashboard-tab"]').click();
-        listenForProducts(); // Start listening for products when admin logs in
+        await listenForProducts(); // Await product loading before listening for orders
         listenForOrders(); // Start listening for orders
         listenForRatings(); // Start listening for ratings
     } else {
@@ -470,17 +470,22 @@ function displayAdminProducts(products) {
     });
 }
 
-function listenForProducts() {
-    const productsRef = ref(database, 'products');
-    onValue(productsRef, (snapshot) => {
-        allAdminProducts = snapshot.val() || {};
-        displayAdminProducts(allAdminProducts);
-        updateDashboardCounts(Object.keys(allAdminProducts).length, pendingOrdersCountEl.textContent, completedOrdersCountEl.textContent);
-        populateProductSelects(); // Update product selects for analytics
-    }, (error) => {
-        console.error("Error listening for products:", error);
-        productListContainer.innerHTML = `<p class="no-items-message error-message">Error loading products. Firebase: ${error.message}. Check console and Firebase rules.</p>`;
-        showAlert(`Error loading products: ${error.message}. Check console and Firebase rules.`, 'Data Error');
+async function listenForProducts() { // Made listenForProducts async
+    return new Promise((resolve, reject) => {
+        const productsRef = ref(database, 'products');
+        onValue(productsRef, (snapshot) => {
+            allAdminProducts = snapshot.val() || {};
+            console.log("allAdminProducts loaded:", Object.keys(allAdminProducts).length, "products"); // Confirm products loaded
+            displayAdminProducts(allAdminProducts);
+            updateDashboardCounts(Object.keys(allAdminProducts).length, pendingOrdersCountEl.textContent, completedOrdersCountEl.textContent);
+            populateProductSelects(); // Update product selects for analytics
+            resolve(); // Resolve the promise once products are loaded
+        }, (error) => {
+            console.error("Error listening for products:", error);
+            productListContainer.innerHTML = `<p class="no-items-message error-message">Error loading products. Firebase: ${error.message}. Check console and Firebase rules.</p>`;
+            showAlert(`Error loading products: ${error.message}. Check console and Firebase rules.`, 'Data Error');
+            reject(error); // Reject the promise on error
+        });
     });
 }
 
@@ -613,8 +618,16 @@ function displayPendingOrders(orders) {
         return;
     }
 
+    // Check if allAdminProducts is populated before proceeding
+    // This check is crucial to prevent rendering issues if products haven't loaded yet.
+    if (Object.keys(allAdminProducts).length === 0) {
+        console.warn("allAdminProducts is empty. Cannot render pending orders with full details yet. Waiting for products to load.");
+        orderListContainer.innerHTML = '<p class="no-items-message">Loading product details for pending orders...</p>';
+        return; // Exit and wait for products to load
+    }
+
+
     const orderListHtml = Object.values(orders).map(order => {
-        // Ensure allAdminProducts is populated before trying to access product details
         const product = allAdminProducts[order.productId];
         if (!product) {
             console.warn(`Product with ID ${order.productId} not found for order ${order.id}. Displaying as 'Unknown Product'.`);
@@ -662,6 +675,7 @@ function displayPendingOrders(orders) {
     }).join('');
     console.log("Generated orderListHtml:", orderListHtml); // Log the final HTML string
     orderListContainer.innerHTML = orderListHtml;
+    console.log("orderListContainer after innerHTML:", orderListContainer.outerHTML); // Confirm content inserted
 
     // Attach event listeners after rendering
     document.querySelectorAll('.complete-order-btn').forEach(button => {
