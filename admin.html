@@ -260,6 +260,19 @@
             transform: translateY(-2px);
         }
 
+        .admin-button.secondary {
+            background-color: var(--color-medium-gray);
+            color: var(--color-white);
+            background-image: linear-gradient(to right, var(--color-medium-gray) 0%, #5a6268 100%);
+        }
+
+        .admin-button.secondary:hover {
+            background-color: #5a6268;
+            background-image: linear-gradient(to right, #5a6268 0%, #4e555b 100%);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+            transform: translateY(-2px);
+        }
+
         .admin-dashboard {
             display: none; /* Hidden by default, shown after login */
         }
@@ -343,7 +356,13 @@
             min-height: 80px;
         }
 
-        .product-form input[type="file"], .edit-product-form input[type="file"] {
+        .product-image-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .product-image-input-group input[type="file"] {
             padding: 10px 0;
             background-color: transparent;
             border: none;
@@ -888,8 +907,14 @@
                         <option value="sports">Sports</option>
                     </select>
 
-                    <label for="product-image">Product Images:</label>
-                    <input type="file" id="product-image" multiple accept="image/*">
+                    <label>Product Images (up to 5):</label>
+                    <div class="product-image-input-group">
+                        <input type="file" id="product-image-1" accept="image/*">
+                        <input type="file" id="product-image-2" accept="image/*">
+                        <input type="file" id="product-image-3" accept="image/*">
+                        <input type="file" id="product-image-4" accept="image/*">
+                        <input type="file" id="product-image-5" accept="image/*">
+                    </div>
                     <div id="image-preview-container" class="image-preview-container"></div>
 
                     <label for="product-video-url">Product Video URL (Optional):</label>
