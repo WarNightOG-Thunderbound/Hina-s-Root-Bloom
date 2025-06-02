@@ -1,8 +1,7 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
+import { getDatabase, ref, onValue, push, serverTimestamp, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -20,6 +19,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
+const database = getDatabase(app);
 
 // Global variables
 const productModal = document.getElementById('product-modal');
@@ -216,9 +216,8 @@ function openProductModal(product) {
     document.getElementById('modal-product-stock').textContent = product.stock !== undefined ? (product.stock > 0 ? `${product.stock} available` : 'Out of Stock') : 'N/A';
     placeOrderButton.disabled = product.stock === 0; // Disable button if out of stock
 
-
     const imageGallery = document.getElementById('modal-product-images');
-    imageGallery.innerHTML = '';
+    imageGallery.innerHTML = ''; // Clear previous images
     if (product.images && product.images.length > 0) {
         product.images.forEach(imageUrl => {
             if(imageUrl) { // Ensure URL is not empty or null
@@ -245,22 +244,22 @@ function openProductModal(product) {
         // Remove other parameters like &list=...
         const queryIndex = embedUrl.indexOf('?');
         if (queryIndex !== -1) {
-             const videoIdPart = embedUrl.substring(0, queryIndex);
-             const params = new URLSearchParams(embedUrl.substring(queryIndex));
-             if (params.has('v')) { // For URLs like /embed/?v=VIDEO_ID
-                 embedUrl = `https://www.youtube.com/embed/${params.get('v')}`;
-             } else if (videoIdPart.includes("/embed/")) { // If it's already an embed link but with params
-                 embedUrl = videoIdPart;
-             }
+            const videoIdPart = embedUrl.substring(0, queryIndex);
+            const params = new URLSearchParams(embedUrl.substring(queryIndex));
+            if (params.has('v')) { // For URLs like /embed/?v=VIDEO_ID...
+                embedUrl = `https://www.youtube.com/embed/${params.get('v')}`;
+            } else {
+                 embedUrl = videoIdPart; // Keep original if no 'v' param, could be a clean embed URL
+            }
         }
 
-
-        productVideo.src = embedUrl;
+        productVideo.innerHTML = `<iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
         productVideo.style.display = 'block';
     } else {
+        productVideo.innerHTML = '';
         productVideo.style.display = 'none';
-        productVideo.src = '';
     }
+
 
     productModal.style.display = 'flex';
 }
@@ -270,8 +269,14 @@ closeButtons.forEach(button => {
     button.addEventListener('click', () => {
         productModal.style.display = 'none';
         orderModal.style.display = 'none';
-        ratingModal.style.display = 'none'; // Close rating modal
-        codForm.style.display = 'none'; // Ensure form is hidden on modal close
+        ratingModal.style.display = 'none';
+        // Clear COD form fields when order modal is closed
+        codNameInput.value = '';
+        codPhoneInput.value = '';
+        codAddressInput.value = '';
+        // Reset rating stars
+        resetRatingStars();
+        selectedRating = 0;
     });
 });
 
@@ -281,115 +286,127 @@ window.addEventListener('click', (event) => {
     }
     if (event.target === orderModal) {
         orderModal.style.display = 'none';
-        codForm.style.display = 'none';
-    }
-    if (event.target === ratingModal) { // Close rating modal on outside click
-        ratingModal.style.display = 'none';
-    }
-});
-
-// --- Place Order Button in Product Modal ---
-placeOrderButton.addEventListener('click', () => {
-    if (!currentProduct) {
-        showAlert("Error: Product details not loaded. Please try again.", "Error");
-        return;
-    }
-    if (currentProduct.stock === 0) {
-        showAlert("Sorry, this product is currently out of stock.", "Out of Stock");
-        return;
-    }
-    productModal.style.display = 'none'; // Close product modal
-    orderModal.style.display = 'flex'; // Open order modal
-    codForm.style.display = 'block'; // Ensure COD form is visible
-});
-
-
-// --- Confirm Cash on Delivery Order ---
-confirmCodOrderButton.addEventListener('click', async () => {
-    const name = codNameInput.value.trim();
-    const phone = codPhoneInput.value.trim();
-    const address = codAddressInput.value.trim();
-
-    if (!name || !phone || !address) {
-        showAlert('Please fill in all delivery details.', 'Missing Details');
-        return;
-    }
-    if (!/^(03\d{2}[-\s]?\d{7})$/.test(phone) && !/^(03\d{9})$/.test(phone)) {
-         showAlert('Please enter a valid Pakistani phone number (e.g., 03XX-XXXXXXX or 03XXXXXXXXX).', 'Invalid Phone');
-        return;
-    }
-
-    if (!currentProduct) {
-        showAlert('Error: No product selected. Please close this form and select a product.', 'Error');
-        return;
-    }
-     if (currentProduct.stock === 0) {
-        showAlert("Sorry, this product just went out of stock.", "Out of Stock");
-        orderModal.style.display = 'none';
-        codForm.style.display = 'none';
-        return;
-    }
-
-
-    confirmCodOrderButton.disabled = true;
-    confirmCodOrderButton.textContent = 'Processing...';
-
-    try {
-        const newOrderRef = push(ref(database, 'orders'));
-        currentOrderId = newOrderRef.key; // Store order ID for rating
-        await set(newOrderRef, {
-            id: currentOrderId,
-            productId: currentProduct.id,
-            productTitle: currentProduct.title,
-            productPrice: currentProduct.price,
-            customerName: name,
-            customerPhone: phone,
-            customerAddress: address,
-            paymentMethod: 'Cash on Delivery',
-            orderDate: new Date().toISOString(),
-            status: "Pending"
-        });
-
-        await showAlert(`Order for "${currentProduct.title}" placed successfully! We will contact you soon for delivery.`, 'Order Placed!');
-        orderModal.style.display = 'none';
-        codForm.style.display = 'none';
-
         codNameInput.value = '';
         codPhoneInput.value = '';
         codAddressInput.value = '';
+    }
+    if (event.target === ratingModal) {
+        ratingModal.style.display = 'none';
+        resetRatingStars();
+        selectedRating = 0;
+    }
+});
 
-        // Open the rating modal after successful order
-        openRatingModal(currentProduct);
+// --- Place Order Logic (COD) ---
+placeOrderButton.addEventListener('click', () => {
+    if (currentProduct && currentProduct.stock > 0) {
+        orderModal.style.display = 'flex';
+    } else {
+        showAlert('This product is out of stock.', 'Out of Stock');
+    }
+});
+
+confirmCodOrderButton.addEventListener('click', async () => {
+    const customerName = codNameInput.value.trim();
+    const customerPhone = codPhoneInput.value.trim();
+    const customerAddress = codAddressInput.value.trim();
+
+    if (!customerName || !customerPhone || !customerAddress) {
+        await showAlert('Please fill in all customer details.', 'Missing Information');
+        return;
+    }
+
+    if (!currentProduct) {
+        await showAlert('No product selected for order.', 'Error');
+        return;
+    }
+
+    if (currentProduct.stock === 0) {
+        await showAlert('This product is out of stock.', 'Out of Stock');
+        return;
+    }
+
+    confirmCodOrderButton.disabled = true;
+    confirmCodOrderButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Placing Order...';
+
+    try {
+        const newOrderRef = push(ref(database, 'orders'));
+        currentOrderId = newOrderRef.key; // Store the new order ID for linking rating
+
+        const orderData = {
+            productId: currentProduct.id,
+            productTitle: currentProduct.title,
+            quantity: 1, // For simplicity, always 1 for now
+            totalPrice: currentProduct.price,
+            customerName: customerName,
+            customerPhone: customerPhone,
+            customerAddress: customerAddress,
+            orderDate: serverTimestamp(),
+            status: 'Pending', // Initial status
+            // Other details could be added
+        };
+
+        await set(newOrderRef, orderData);
+
+        // Decrease product stock
+        const productRef = ref(database, 'products/' + currentProduct.id);
+        const newStock = currentProduct.stock - 1;
+        await update(productRef, { stock: newStock });
+
+        await showAlert('Your order has been placed successfully! We will contact you soon.', 'Order Confirmed');
+        orderModal.style.display = 'none';
+        productModal.style.display = 'none'; // Close product modal too
+
+        // Prompt for rating after order, if applicable
+        await showRatingModal(currentProduct.title, currentOrderId);
 
     } catch (error) {
-        console.error("Error placing order: ", error);
-        showAlert("Failed to place order. Please try again. Error: " + error.message, "Order Failed");
+        await showAlert('There was an error placing your order: ' + error.message, 'Order Failed');
+        console.error('Order placement error:', error);
     } finally {
         confirmCodOrderButton.disabled = false;
-        confirmCodOrderButton.textContent = 'Confirm Order (Cash on Delivery)';
+        confirmCodOrderButton.innerHTML = 'Confirm Order';
     }
 });
 
-// --- Rating System Logic ---
-function openRatingModal(product) {
-    ratingProductTitleSpan.textContent = product.title;
-    selectedRating = 0; // Reset selected rating
-    updateStarDisplay(); // Reset star visuals
-    ratingModal.style.display = 'flex';
+// --- Rating Logic ---
+function showRatingModal(productTitle, orderId) {
+    return new Promise(resolve => {
+        ratingProductTitleSpan.textContent = productTitle;
+        currentOrderId = orderId; // Store the order ID
+        resetRatingStars(); // Reset stars visually
+        selectedRating = 0; // Reset selected rating value
+        ratingModal.style.display = 'flex';
+
+        // Listen for submit rating button click
+        const submitHandler = async () => {
+            if (selectedRating > 0) {
+                await submitProductRating(currentProduct.id, currentOrderId, selectedRating);
+            } else {
+                await showAlert('Please select a star rating before submitting.', 'Rating Required');
+            }
+            ratingModal.style.display = 'none';
+            submitRatingButton.removeEventListener('click', submitHandler);
+            resolve();
+        };
+        submitRatingButton.addEventListener('click', submitHandler);
+    });
 }
 
+
 ratingStarsContainer.addEventListener('click', (event) => {
-    if (event.target.classList.contains('fa-star')) {
-        selectedRating = parseInt(event.target.dataset.rating);
-        updateStarDisplay();
+    const clickedStar = event.target.closest('.fa-star');
+    if (clickedStar) {
+        const rating = parseInt(clickedStar.dataset.rating);
+        selectedRating = rating;
+        highlightStars(rating);
     }
 });
 
-function updateStarDisplay() {
+function highlightStars(rating) {
     const stars = ratingStarsContainer.querySelectorAll('.fa-star');
-    stars.forEach(star => {
-        const ratingValue = parseInt(star.dataset.rating);
-        if (ratingValue <= selectedRating) {
+    stars.forEach((star, index) => {
+        if (index < rating) {
             star.classList.add('selected');
         } else {
             star.classList.remove('selected');
@@ -397,62 +414,54 @@ function updateStarDisplay() {
     });
 }
 
-submitRatingButton.addEventListener('click', async () => {
-    if (selectedRating === 0) {
-        showAlert('Please select a star rating before submitting.', 'No Rating Selected');
-        return;
-    }
+function resetRatingStars() {
+    const stars = ratingStarsContainer.querySelectorAll('.fa-star');
+    stars.forEach(star => star.classList.remove('selected'));
+}
 
+async function submitProductRating(productId, orderId, rating) {
     submitRatingButton.disabled = true;
     submitRatingButton.textContent = 'Submitting...';
-
     try {
-        // 1. Save individual rating to 'ratings' node
+        // Save rating to 'ratings' collection
         const newRatingRef = push(ref(database, 'ratings'));
         await set(newRatingRef, {
-            productId: currentProduct.id,
-            orderId: currentOrderId, // Link to the order
-            stars: selectedRating,
+            productId: productId,
+            orderId: orderId, // Link rating to the order
+            rating: rating,
             timestamp: serverTimestamp()
         });
 
-        // 2. Update product's aggregate rating in 'products' node
-        const productRef = ref(database, 'products/' + currentProduct.id);
-        const snapshot = await get(productRef);
-        const productData = snapshot.val();
+        // Update product's average rating in 'products' collection
+        const productRef = ref(database, 'products/' + productId);
+        const productSnapshot = await get(productRef); // Fetch current product data
 
-        if (productData) {
-            const oldTotalStarsSum = productData.totalStarsSum || 0;
-            const oldNumberOfRatings = productData.numberOfRatings || 0;
+        if (productSnapshot.exists()) {
+            const productData = productSnapshot.val();
+            const currentTotalStarsSum = productData.totalStarsSum || 0;
+            const currentNumberOfRatings = productData.numberOfRatings || 0;
 
-            const newTotalStarsSum = oldTotalStarsSum + selectedRating;
-            const newNumberOfRatings = oldNumberOfRatings + 1;
-            const newAverageRating = newTotalStarsSum / newNumberOfRatings;
+            const updatedTotalStarsSum = currentTotalStarsSum + rating;
+            const updatedNumberOfRatings = currentNumberOfRatings + 1;
+            const updatedAverageRating = (updatedTotalStarsSum / updatedNumberOfRatings).toFixed(2);
 
             await update(productRef, {
-                totalStarsSum: newTotalStarsSum,
-                numberOfRatings: newNumberOfRatings,
-                averageRating: newAverageRating.toFixed(2) // Store as string with 2 decimal places
+                totalStarsSum: updatedTotalStarsSum,
+                numberOfRatings: updatedNumberOfRatings,
+                averageRating: updatedAverageRating
             });
-        } else {
-            // This case should ideally not happen if product was just ordered
-            console.warn("Product not found when updating rating aggregates.");
         }
 
         await showAlert('Thank you for your rating!', 'Rating Submitted');
-        ratingModal.style.display = 'none';
-        currentProduct = null; // Clear current product after rating
-        currentOrderId = null; // Clear current order ID
-        selectedRating = 0; // Reset rating
-
     } catch (error) {
-        console.error("Error submitting rating: ", error);
-        showAlert("Failed to submit rating. Please try again. Error: " + error.message, "Rating Failed");
+        await showAlert('Failed to submit rating: ' + error.message, "Rating Failed");
+        console.error('Rating submission error:', error);
     } finally {
         submitRatingButton.disabled = false;
         submitRatingButton.textContent = 'Submit Rating';
     }
-});
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     const homeView = document.getElementById('home-view');
