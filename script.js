@@ -123,12 +123,26 @@ function showConfirm(message, title = 'Confirm Action', okButtonText = 'Yes', ca
 onAuthStateChanged(auth, (user) => {
     if (user) {
         console.log("User is signed in:", user.email);
-        document.getElementById('auth-section').style.display = 'none';
-        document.getElementById('admin-dashboard').style.display = 'block';
+        // Added checks to prevent errors if elements are not present
+        const authSection = document.getElementById('auth-section');
+        const adminDashboard = document.getElementById('admin-dashboard');
+        if (authSection) {
+            authSection.style.display = 'none';
+        }
+        if (adminDashboard) {
+            adminDashboard.style.display = 'block';
+        }
     } else {
         console.log("User is signed out.");
-        document.getElementById('auth-section').style.display = 'block';
-        document.getElementById('admin-dashboard').style.display = 'none';
+        // Added checks to prevent errors if elements are not present
+        const authSection = document.getElementById('auth-section');
+        const adminDashboard = document.getElementById('admin-dashboard');
+        if (authSection) {
+            authSection.style.display = 'block';
+        }
+        if (adminDashboard) {
+            adminDashboard.style.display = 'none';
+        }
     }
     loadProducts(); // Load products regardless of auth state for public view
 });
