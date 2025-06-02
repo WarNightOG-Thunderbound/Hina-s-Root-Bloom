@@ -405,7 +405,7 @@ h2 {
     font-weight: 600;
     margin-top: 20px; /* Adjusted margin */
     width: 100%;
-    box-sizing: border-box;
+    box-sizing: border;
     transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
