@@ -1,9 +1,3 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -18,8 +12,16 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+const app = firebase.initializeApp(firebaseConfig);
+const analytics = firebase.analytics();
+const database = firebase.database();
+const ref = firebase.database.ref;
+const onValue = firebase.database.onValue;
+const push = firebase.database.push;
+const set = firebase.database.set;
+const get = firebase.database.get;
+const child = firebase.database.child;
+const serverTimestamp = firebase.database.ServerValue.TIMESTAMP;
 
 // Global variables
 const productModal = document.getElementById('product-modal');
@@ -28,7 +30,7 @@ const ratingModal = document.getElementById('rating-modal'); // New rating modal
 const closeButtons = document.querySelectorAll('.close-button');
 const productContainer = document.getElementById('product-container');
 const categoryButtons = document.querySelectorAll('.category-button');
-const placeOrderButton = document.getElementById('place-order-button');
+const placeOrderButton = document.getElementById('add-to-cart-button'); // Changed ID to match HTML
 const searchBar = document.getElementById('search-bar');
 const navLinks = document.querySelectorAll('.main-nav a');
 
@@ -123,92 +125,38 @@ function displayProducts(productsToDisplay) {
         productContainer.innerHTML = '<p class="no-products-message">No products match your criteria.</p>';
         return;
     }
+
     Object.values(productsToDisplay).forEach(product => {
         const productCard = document.createElement('div');
         productCard.classList.add('product-card');
-        productCard.dataset.productId = product.id;
+        productCard.dataset.productId = product.id; // Store product ID
 
         // Calculate average rating for display
         const averageRating = product.numberOfRatings > 0 ? (product.totalStarsSum / product.numberOfRatings).toFixed(1) : 'N/A';
         const ratingStarsHtml = product.numberOfRatings > 0 ?
             `<div class="product-card-rating">
-                <i class="fa-solid fa-star" style="color: var(--color-warning-yellow);"></i> ${averageRating} (${product.numberOfRatings} ratings)
-            </div>` :
-            `<div class="product-card-rating">No ratings yet</div>`;
+                <i class="fa-solid fa-star" style="color: gold;"></i> ${averageRating} / 7
+            </div>` : '';
 
+        const imageUrl = product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/300x200.png?text=No+Image';
 
         productCard.innerHTML = `
-            <img src="${product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/300x200.png?text=No+Image'}" alt="${product.title}">
-            <div class="product-info">
-                <h3>${product.title}</h3>
-                <p class="product-brand-card"><strong>Brand:</strong> ${product.brand || 'N/A'}</p>
-                <p>${product.description.substring(0, 80)}...</p>
-                <p class="price">PKR ${product.price.toLocaleString()}</p>
-                ${ratingStarsHtml}
-            </div>
+            <img src="${imageUrl}" alt="${product.title}">
+            <h3>${product.title}</h3>
+            <p class="product-brand">${product.brand || 'N/A'}</p>
+            <p class="product-price">PKR ${product.price.toLocaleString()}</p>
+            ${ratingStarsHtml}
         `;
+
         productCard.addEventListener('click', () => openProductModal(product));
         productContainer.appendChild(productCard);
     });
 }
 
-// --- Fetch products from Firebase ---
-const productsRef = ref(database, 'products');
-onValue(productsRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-        allProducts = data;
-        displayProducts(allProducts); // Display all products initially
-    } else {
-        allProducts = {}; // Ensure it's an empty object if no data
-        productContainer.innerHTML = '<p class="no-products-message">No products available at the moment. Please check back later!</p>';
-    }
-}, (error) => {
-    console.error("Firebase product read failed: " + error.message);
-    showAlert('Could not load products. Please try again later.', 'Error');
-});
-
-// --- Category filtering ---
-categoryButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        const category = button.dataset.category;
-        // Highlight active button
-        categoryButtons.forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-
-        if (category === "All Products") {
-            displayProducts(allProducts);
-        } else {
-            const filteredProducts = Object.values(allProducts).filter(product => product.category === category);
-            displayProducts(filteredProducts);
-        }
-        searchBar.value = ''; // Clear search bar on category change
-    });
-});
-
-// --- Search functionality ---
-searchBar.addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase().trim();
-    // Deselect category buttons when searching
-    categoryButtons.forEach(btn => btn.classList.remove('active'));
-
-    if (!searchTerm) {
-        displayProducts(allProducts); // Show all if search is cleared
-        return;
-    }
-
-    const filteredProducts = Object.values(allProducts).filter(product =>
-        product.title.toLowerCase().includes(searchTerm) ||
-        product.description.toLowerCase().includes(searchTerm) ||
-        (product.brand && product.brand.toLowerCase().includes(searchTerm))
-    );
-    displayProducts(filteredProducts);
-});
-
-
-// --- Open Product Modal ---
+// --- Product Modal Logic ---
 function openProductModal(product) {
-    currentProduct = product;
+    currentProduct = product; // Set the global currentProduct
+
     document.getElementById('modal-product-title').textContent = product.title;
     document.getElementById('modal-product-brand').textContent = product.brand || 'N/A';
     document.getElementById('modal-product-description').textContent = product.description;
@@ -216,9 +164,12 @@ function openProductModal(product) {
     document.getElementById('modal-product-stock').textContent = product.stock !== undefined ? (product.stock > 0 ? `${product.stock} available` : 'Out of Stock') : 'N/A';
     placeOrderButton.disabled = product.stock === 0; // Disable button if out of stock
 
+    const averageRating = product.numberOfRatings > 0 ? (product.totalStarsSum / product.numberOfRatings).toFixed(1) : 'N/A';
+    document.getElementById('modal-product-rating').textContent = `${averageRating} / 7 (${product.numberOfRatings || 0} reviews)`;
+
 
     const imageGallery = document.getElementById('modal-product-images');
-    imageGallery.innerHTML = '';
+    imageGallery.innerHTML = ''; // Clear previous images
     if (product.images && product.images.length > 0) {
         product.images.forEach(imageUrl => {
             if(imageUrl) { // Ensure URL is not empty or null
@@ -235,43 +186,14 @@ function openProductModal(product) {
         imageGallery.appendChild(img);
     }
 
-    const productVideo = document.getElementById('modal-product-video');
-    if (product.videoUrl) {
-        // Basic YouTube URL to Embed URL conversion
-        let embedUrl = product.videoUrl;
-        if (product.videoUrl.includes("watch?v=")) {
-            embedUrl = product.videoUrl.replace("watch?v=", "embed/");
-        }
-        // Remove other parameters like &list=...
-        const queryIndex = embedUrl.indexOf('?');
-        if (queryIndex !== -1) {
-             const videoIdPart = embedUrl.substring(0, queryIndex);
-             const params = new URLSearchParams(embedUrl.substring(queryIndex));
-             if (params.has('v')) { // For URLs like /embed/?v=VIDEO_ID
-                 embedUrl = `https://www.youtube.com/embed/${params.get('v')}`;
-             } else if (videoIdPart.includes("/embed/")) { // If it's already an embed link but with params
-                 embedUrl = videoIdPart;
-             }
-        }
-
-
-        productVideo.src = embedUrl;
-        productVideo.style.display = 'block';
-    } else {
-        productVideo.style.display = 'none';
-        productVideo.src = '';
-    }
-
     productModal.style.display = 'flex';
 }
 
-// --- Close Modals ---
 closeButtons.forEach(button => {
     button.addEventListener('click', () => {
         productModal.style.display = 'none';
         orderModal.style.display = 'none';
-        ratingModal.style.display = 'none'; // Close rating modal
-        codForm.style.display = 'none'; // Ensure form is hidden on modal close
+        ratingModal.style.display = 'none';
     });
 });
 
@@ -281,115 +203,190 @@ window.addEventListener('click', (event) => {
     }
     if (event.target === orderModal) {
         orderModal.style.display = 'none';
-        codForm.style.display = 'none';
     }
-    if (event.target === ratingModal) { // Close rating modal on outside click
+    if (event.target === ratingModal) {
         ratingModal.style.display = 'none';
     }
+    if (event.target === customAlertModal) {
+        customAlertModal.style.display = 'none';
+    }
 });
 
-// --- Place Order Button in Product Modal ---
+// --- Category Filtering ---
+categoryButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const category = button.dataset.category;
+        filterProductsByCategory(category);
+        categoryButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+    });
+});
+
+function filterProductsByCategory(category) {
+    let filteredProducts = {};
+    if (category === 'All Products') {
+        filteredProducts = { ...allProducts };
+    } else {
+        for (const productId in allProducts) {
+            if (allProducts[productId].category === category) {
+                filteredProducts[productId] = allProducts[productId];
+            }
+        }
+    }
+    displayProducts(filteredProducts);
+}
+
+// --- Search Bar Functionality ---
+searchBar.addEventListener('input', () => {
+    const searchTerm = searchBar.value.toLowerCase().trim();
+    let filteredProducts = {};
+    if (searchTerm === '') {
+        filteredProducts = { ...allProducts };
+    } else {
+        for (const productId in allProducts) {
+            const product = allProducts[productId];
+            if (product.title.toLowerCase().includes(searchTerm) ||
+                (product.description && product.description.toLowerCase().includes(searchTerm)) ||
+                (product.brand && product.brand.toLowerCase().includes(searchTerm))) {
+                filteredProducts[productId] = product;
+            }
+        }
+    }
+    displayProducts(filteredProducts);
+});
+
+// --- COD Order Logic ---
 placeOrderButton.addEventListener('click', () => {
-    if (!currentProduct) {
-        showAlert("Error: Product details not loaded. Please try again.", "Error");
-        return;
+    if (currentProduct) {
+        // Pre-fill order modal with product details
+        document.getElementById('order-modal-product-title').textContent = currentProduct.title;
+        document.getElementById('order-modal-product-price').textContent = `PKR ${currentProduct.price.toLocaleString()}`;
+        orderModal.style.display = 'flex';
+        productModal.style.display = 'none'; // Hide product modal
     }
-    if (currentProduct.stock === 0) {
-        showAlert("Sorry, this product is currently out of stock.", "Out of Stock");
-        return;
-    }
-    productModal.style.display = 'none'; // Close product modal
-    orderModal.style.display = 'flex'; // Open order modal
-    codForm.style.display = 'block'; // Ensure COD form is visible
 });
 
+codForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    confirmCodOrderButton.disabled = true;
+    confirmCodOrderButton.textContent = 'Placing Order...';
 
-// --- Confirm Cash on Delivery Order ---
-confirmCodOrderButton.addEventListener('click', async () => {
     const name = codNameInput.value.trim();
     const phone = codPhoneInput.value.trim();
     const address = codAddressInput.value.trim();
 
     if (!name || !phone || !address) {
         showAlert('Please fill in all delivery details.', 'Missing Details');
+        confirmCodOrderButton.disabled = false;
+        confirmCodOrderButton.textContent = 'Confirm Order';
         return;
     }
+
+    // Basic Pakistani phone number validation (e.g., 03XX-XXXXXXX or 03XXXXXXXXX)
     if (!/^(03\d{2}[-\s]?\d{7})$/.test(phone) && !/^(03\d{9})$/.test(phone)) {
-         showAlert('Please enter a valid Pakistani phone number (e.g., 03XX-XXXXXXX or 03XXXXXXXXX).', 'Invalid Phone');
+        showAlert('Please enter a valid Pakistani phone number (e.g., 03XX-XXXXXXX or 03XXXXXXXXX).', 'Invalid Phone');
+        confirmCodOrderButton.disabled = false;
+        confirmCodOrderButton.textContent = 'Confirm Order';
         return;
     }
 
     if (!currentProduct) {
         showAlert('Error: No product selected. Please close this form and select a product.', 'Error');
+        confirmCodOrderButton.disabled = false;
+        confirmCodOrderButton.textContent = 'Confirm Order';
         return;
     }
-     if (currentProduct.stock === 0) {
+
+    if (currentProduct.stock === 0) {
         showAlert("Sorry, this product just went out of stock.", "Out of Stock");
         orderModal.style.display = 'none';
-        codForm.style.display = 'none';
+        confirmCodOrderButton.disabled = false;
+        confirmCodOrderButton.textContent = 'Confirm Order';
         return;
     }
 
 
-    confirmCodOrderButton.disabled = true;
-    confirmCodOrderButton.textContent = 'Processing...';
-
     try {
-        const newOrderRef = push(ref(database, 'orders'));
-        currentOrderId = newOrderRef.key; // Store order ID for rating
-        await set(newOrderRef, {
-            id: currentOrderId,
-            productId: currentProduct.id,
-            productTitle: currentProduct.title,
-            productPrice: currentProduct.price,
-            customerName: name,
-            customerPhone: phone,
-            customerAddress: address,
-            paymentMethod: 'Cash on Delivery',
-            orderDate: new Date().toISOString(),
-            status: "Pending"
-        });
+        // Decrement product stock
+        const productRef = ref(database, 'products/' + currentProduct.id);
+        const productSnapshot = await get(child(productRef, '')); // Use child('') to get the ref for 'productId' itself
+        const productData = productSnapshot.val();
 
-        await showAlert(`Order for "${currentProduct.title}" placed successfully! We will contact you soon for delivery.`, 'Order Placed!');
-        orderModal.style.display = 'none';
-        codForm.style.display = 'none';
+        if (productData && productData.stock > 0) {
+            const newStock = productData.stock - 1;
+            await set(productRef, { ...productData, stock: newStock });
 
-        codNameInput.value = '';
-        codPhoneInput.value = '';
-        codAddressInput.value = '';
+            // Record the order
+            const newOrderRef = push(ref(database, 'orders'));
+            currentOrderId = newOrderRef.key; // Store for potential rating
+            await set(newOrderRef, {
+                id: currentOrderId,
+                productId: currentProduct.id,
+                productTitle: currentProduct.title,
+                productPrice: currentProduct.price,
+                customerName: name,
+                customerPhone: phone,
+                customerAddress: address,
+                orderDate: serverTimestamp(),
+                status: 'pending'
+            });
 
-        // Open the rating modal after successful order
-        openRatingModal(currentProduct);
+            showAlert('Your order has been placed successfully! We will contact you soon for confirmation.', 'Order Placed');
+            orderModal.style.display = 'none';
+
+            // Optionally, open rating modal after a short delay or confirmation
+            const confirmedRating = await showConfirm('Would you like to rate this product now?', 'Rate Product', 'Rate Now', 'Later');
+            if (confirmedRating) {
+                openRatingModal(currentProduct, currentOrderId);
+            }
+
+        } else {
+            showAlert("Sorry, this product just went out of stock. Please try again later.", "Out of Stock");
+            orderModal.style.display = 'none';
+        }
 
     } catch (error) {
-        console.error("Error placing order: ", error);
-        showAlert("Failed to place order. Please try again. Error: " + error.message, "Order Failed");
+        showAlert('There was an error placing your order: ' + error.message, 'Order Error');
+        console.error('Order placement error:', error);
     } finally {
         confirmCodOrderButton.disabled = false;
-        confirmCodOrderButton.textContent = 'Confirm Order (Cash on Delivery)';
+        confirmCodOrderButton.textContent = 'Confirm Order';
+        codForm.reset(); // Clear form
     }
 });
 
-// --- Rating System Logic ---
-function openRatingModal(product) {
+// --- Rating Modal Logic ---
+function openRatingModal(product, orderId) {
     ratingProductTitleSpan.textContent = product.title;
+    currentProduct = product; // Set for rating submission
+    currentOrderId = orderId; // Set the order ID
     selectedRating = 0; // Reset selected rating
-    updateStarDisplay(); // Reset star visuals
+    updateStarDisplay(0); // Clear stars
     ratingModal.style.display = 'flex';
 }
 
-ratingStarsContainer.addEventListener('click', (event) => {
-    if (event.target.classList.contains('fa-star')) {
-        selectedRating = parseInt(event.target.dataset.rating);
-        updateStarDisplay();
+ratingStarsContainer.addEventListener('mouseover', (e) => {
+    if (e.target.classList.contains('fa-star')) {
+        const rating = parseInt(e.target.dataset.rating);
+        updateStarDisplay(rating);
     }
 });
 
-function updateStarDisplay() {
+ratingStarsContainer.addEventListener('mouseout', () => {
+    updateStarDisplay(selectedRating); // Revert to selected rating
+});
+
+ratingStarsContainer.addEventListener('click', (e) => {
+    if (e.target.classList.contains('fa-star')) {
+        selectedRating = parseInt(e.target.dataset.rating);
+        updateStarDisplay(selectedRating);
+    }
+});
+
+function updateStarDisplay(rating) {
     const stars = ratingStarsContainer.querySelectorAll('.fa-star');
     stars.forEach(star => {
-        const ratingValue = parseInt(star.dataset.rating);
-        if (ratingValue <= selectedRating) {
+        if (parseInt(star.dataset.rating) <= rating) {
             star.classList.add('selected');
         } else {
             star.classList.remove('selected');
@@ -399,7 +396,11 @@ function updateStarDisplay() {
 
 submitRatingButton.addEventListener('click', async () => {
     if (selectedRating === 0) {
-        showAlert('Please select a star rating before submitting.', 'No Rating Selected');
+        showAlert('Please select a star rating.', 'Rating Required');
+        return;
+    }
+    if (!currentProduct || !currentOrderId) {
+        showAlert('Error: Product or Order information missing for rating.', 'Error');
         return;
     }
 
@@ -407,66 +408,83 @@ submitRatingButton.addEventListener('click', async () => {
     submitRatingButton.textContent = 'Submitting...';
 
     try {
-        // 1. Save individual rating to 'ratings' node
-        const newRatingRef = push(ref(database, 'ratings'));
-        await set(newRatingRef, {
-            productId: currentProduct.id,
-            orderId: currentOrderId, // Link to the order
-            stars: selectedRating,
-            timestamp: serverTimestamp()
-        });
-
-        // 2. Update product's aggregate rating in 'products' node
+        // Update product's total stars and number of ratings
         const productRef = ref(database, 'products/' + currentProduct.id);
-        const snapshot = await get(productRef);
+        const snapshot = await get(child(productRef, '')); // Use child('') to get the ref for 'productId' itself
         const productData = snapshot.val();
 
         if (productData) {
             const oldTotalStarsSum = productData.totalStarsSum || 0;
             const oldNumberOfRatings = productData.numberOfRatings || 0;
-
             const newTotalStarsSum = oldTotalStarsSum + selectedRating;
             const newNumberOfRatings = oldNumberOfRatings + 1;
-            const newAverageRating = newTotalStarsSum / newNumberOfRatings;
+            const newAverageRating = (newTotalStarsSum / newNumberOfRatings).toFixed(2);
 
-            await update(productRef, {
+            await set(productRef, {
+                ...productData,
                 totalStarsSum: newTotalStarsSum,
                 numberOfRatings: newNumberOfRatings,
-                averageRating: newAverageRating.toFixed(2) // Store as string with 2 decimal places
+                averageRating: parseFloat(newAverageRating) // Store as number for sorting/calculations
             });
+
+            // Record the individual rating
+            const newRatingRef = push(ref(database, 'ratings'));
+            await set(newRatingRef, {
+                id: newRatingRef.key,
+                productId: currentProduct.id,
+                orderId: currentOrderId,
+                stars: selectedRating,
+                timestamp: serverTimestamp()
+            });
+
+            showAlert('Thank you for your rating!', 'Rating Submitted');
+            ratingModal.style.display = 'none';
         } else {
-            // This case should ideally not happen if product was just ordered
-            console.warn("Product not found when updating rating aggregates.");
+            showAlert('Product not found for rating. It might have been deleted.', 'Rating Failed');
         }
-
-        await showAlert('Thank you for your rating!', 'Rating Submitted');
-        ratingModal.style.display = 'none';
-        currentProduct = null; // Clear current product after rating
-        currentOrderId = null; // Clear current order ID
-        selectedRating = 0; // Reset rating
-
     } catch (error) {
-        console.error("Error submitting rating: ", error);
-        showAlert("Failed to submit rating. Please try again. Error: " + error.message, "Rating Failed");
+        showAlert('Error submitting rating: ' + error.message, 'Rating Failed');
+        console.error('Rating submission error:', error);
     } finally {
         submitRatingButton.disabled = false;
         submitRatingButton.textContent = 'Submit Rating';
     }
 });
 
+// --- Firebase Product Data Listener ---
 document.addEventListener('DOMContentLoaded', () => {
-    const homeView = document.getElementById('home-view');
+    const productsRef = ref(database, 'products');
+    onValue(productsRef, (snapshot) => {
+        allProducts = {};
+        if (snapshot.exists()) {
+            snapshot.forEach(childSnapshot => {
+                const product = childSnapshot.val();
+                allProducts[product.id] = product;
+            });
+        }
+        displayProducts(allProducts); // Display all products initially
+    }, (error) => {
+        console.error("Error listening for products:", error);
+        productContainer.innerHTML = `<p class="no-products-message error-message">Error loading products. Firebase: ${error.message}.</p>`;
+        showAlert(`Error loading products: ${error.message}.`, 'Data Error');
+    });
+
+    const homeView = document.getElementById('products-section'); // Correctly identify home view
     const supportView = document.getElementById('support-view');
-    const supportNavLink = document.getElementById('support-nav-link');
+    const supportNavLink = document.getElementById('contact-us-section').querySelector('a[href="#contact-us-section"]'); // Assuming contact link leads to support
     const backToHomeButton = document.getElementById('back-to-home');
-    const navLinks = document.querySelectorAll('.nav-link'); // Select all other nav links
+    const submitSupportQueryButton = document.getElementById('submit-support-query');
+
+    // Initialize display states
+    if (homeView) homeView.style.display = 'block';
+    if (supportView) supportView.style.display = 'none';
 
     function showView(viewToShow, viewToHide) {
-        viewToHide.style.display = 'none';
-        viewToShow.style.display = 'block'; // Or 'flex' if you use flexbox for its internal layout
+        if (viewToHide) viewToHide.style.display = 'none';
+        if (viewToShow) viewToShow.style.display = 'block'; // Or 'flex' if you use flexbox for its internal layout
     }
 
-    // Event listener for the "Support" navigation link
+    // Event listener for the "Contact Us" navigation link to show support view
     if (supportNavLink) {
         supportNavLink.addEventListener('click', (event) => {
             event.preventDefault(); // Prevent default link behavior (like jumping to #)
@@ -483,4 +501,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-}); // This closes the document.addEventListener('DOMContentLoaded' block
+    // Event listener for Submit Support Query button
+    if (submitSupportQueryButton) {
+        submitSupportQueryButton.addEventListener('click', async () => {
+            const name = document.getElementById('support-name').value.trim();
+            const email = document.getElementById('support-email').value.trim();
+            const subject = document.getElementById('support-subject').value.trim();
+            const message = document.getElementById('support-message').value.trim();
+
+            if (!name || !email || !subject || !message) {
+                showAlert('Please fill in all fields for your support query.', 'Missing Information');
+                return;
+            }
+
+            // Basic email validation
+            if (!/\S+@\S+\.\S+/.test(email)) {
+                showAlert('Please enter a valid email address.', 'Invalid Email');
+                return;
+            }
+
+            submitSupportQueryButton.disabled = true;
+            submitSupportQueryButton.textContent = 'Submitting...';
+
+            try {
+                const newQueryRef = push(ref(database, 'supportQueries'));
+                await set(newQueryRef, {
+                    name,
+                    email,
+                    subject,
+                    message,
+                    timestamp: serverTimestamp(),
+                    status: 'pending'
+                });
+                showAlert('Your support query has been submitted successfully!', 'Query Submitted');
+                // Clear form
+                document.getElementById('support-name').value = '';
+                document.getElementById('support-email').value = '';
+                document.getElementById('support-subject').value = '';
+                document.getElementById('support-message').value = '';
+            } catch (error) {
+                showAlert('Failed to submit query: ' + error.message, 'Submission Error');
+                console.error('Support query submission error:', error);
+            } finally {
+                submitSupportQueryButton.disabled = false;
+                submitSupportQueryButton.textContent = 'Submit Query';
+            }
+        });
+    }
+});
