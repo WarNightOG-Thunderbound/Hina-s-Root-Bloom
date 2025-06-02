@@ -44,10 +44,6 @@ const modalProductVideo = document.getElementById('modal-product-video');
 const productQuantityInput = document.getElementById('product-quantity');
 const addToCartButton = document.getElementById('add-to-cart-button');
 const placeOrderButton = document.getElementById('place-order-button');
-const contactUsSection = document.getElementById('contact-us-section');
-const emailInput = document.getElementById('email-input');
-const messageInput = document.getElementById('message-input');
-const sendEmailButton = document.getElementById('send-email-button');
 const orderHistorySection = document.getElementById('order-history-section');
 const orderHistoryList = document.getElementById('order-history-list');
 const toggleOrderHistoryBtn = document.getElementById('toggle-order-history-btn');
@@ -271,11 +267,11 @@ function openProductModal(event) {
     addToCartButton.dataset.productId = productId;
     placeOrderButton.dataset.productId = productId;
 
-    productModal.style.display = 'flex';
+    productModal.style.display = 'flex'; // Show modal
 }
 
 function closeProductModal() {
-    productModal.style.display = 'none';
+    productModal.style.display = 'none'; // Hide modal
     modalProductVideo.innerHTML = ''; // Clear video iframe
 }
 
@@ -462,11 +458,11 @@ function openRatingModal(event) {
     ratingProductTitle.textContent = currentProductToRate.title;
     selectedRating = 0; // Reset selected rating
     updateRatingStars();
-    ratingModal.style.display = 'flex';
+    ratingModal.style.display = 'flex'; // Show modal
 }
 
 function closeRatingModal() {
-    ratingModal.style.display = 'none';
+    ratingModal.style.display = 'none'; // Hide modal
     currentProductToRate = null; // Clear product for rating
     selectedRating = 0; // Reset selected rating
 }
@@ -518,12 +514,12 @@ document.addEventListener('DOMContentLoaded', () => {
     loadProducts();
 
     // Event listener for search button
-    if (searchButton) { // Added null check
+    if (searchButton) {
         searchButton.addEventListener('click', filterAndSortProducts);
     }
 
     // Event listener for search input (live search on enter)
-    if (searchInput) { // Added null check
+    if (searchInput) {
         searchInput.addEventListener('keyup', (event) => {
             if (event.key === 'Enter') {
                 filterAndSortProducts();
@@ -541,12 +537,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Event listener for sort by select
-    if (sortBySelect) { // Added null check
+    if (sortBySelect) {
         sortBySelect.addEventListener('change', filterAndSortProducts);
     }
 
     // Close product modal
-    if (closeModalButton) { // Added null check
+    if (closeModalButton) {
         closeModalButton.addEventListener('click', closeProductModal);
     }
     window.addEventListener('click', (event) => {
@@ -556,35 +552,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Add to cart button in modal
-    if (addToCartButton) { // Added null check
+    if (addToCartButton) {
         addToCartButton.addEventListener('click', addProductToCartFromModal);
     }
 
     // Place Order button in modal
-    if (placeOrderButton) { // Added null check
+    if (placeOrderButton) {
         placeOrderButton.addEventListener('click', placeOrder);
     }
 
-    // Send Email button
-    if (sendEmailButton) { // Added null check
-        sendEmailButton.addEventListener('click', async () => {
-            const email = emailInput.value;
-            const message = messageInput.value;
-
-            if (!email || !message) {
-                showAlert("Please fill in both email and message fields.", "Validation Error");
-                return;
-            }
-
-            console.log(`Email to send: From ${email}, Message: ${message}`);
-            await showAlert("Your message has been sent (simulated). We will get back to you shortly!", "Message Sent");
-            emailInput.value = '';
-            messageInput.value = '';
-        });
-    }
-
     // Toggle Order History visibility
-    if (toggleOrderHistoryBtn) { // Added null check
+    if (toggleOrderHistoryBtn) {
         toggleOrderHistoryBtn.addEventListener('click', () => {
             if (orderHistorySection.style.display === 'block') {
                 orderHistorySection.style.display = 'none';
@@ -598,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Rating star click handler
-    if (ratingStarsContainer) { // Added null check
+    if (ratingStarsContainer) {
         ratingStarsContainer.addEventListener('click', (event) => {
             const star = event.target.closest('.fa-star');
             if (star) {
@@ -609,12 +587,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Submit rating button
-    if (submitRatingButton) { // Added null check
+    if (submitRatingButton) {
         submitRatingButton.addEventListener('click', submitProductRating);
     }
 
     // Close rating modal
-    if (closeRatingModalBtn) { // Added null check
+    if (closeRatingModalBtn) {
         closeRatingModalBtn.addEventListener('click', closeRatingModal);
     }
     window.addEventListener('click', (event) => {
