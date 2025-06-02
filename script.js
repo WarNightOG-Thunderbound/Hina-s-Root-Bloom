@@ -122,15 +122,11 @@ function showConfirm(message, title = 'Confirm Action', okButtonText = 'Yes', ca
 // --- Firebase Authentication State Change ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        // User is signed in
         console.log("User is signed in:", user.email);
-        // You might want to update UI for signed-in users, e.g., show order history
-        document.getElementById('auth-section').style.display = 'none'; // Hide auth section if visible
-        document.getElementById('admin-dashboard').style.display = 'block'; // Show admin dashboard
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('admin-dashboard').style.display = 'block';
     } else {
-        // User is signed out
         console.log("User is signed out.");
-        // Hide admin dashboard, show login
         document.getElementById('auth-section').style.display = 'block';
         document.getElementById('admin-dashboard').style.display = 'none';
     }
@@ -139,13 +135,16 @@ onAuthStateChanged(auth, (user) => {
 
 // --- Product Listing Functions ---
 function displayProducts(products) {
+    console.log("displayProducts called with:", products); // DEBUG LOG
     productListingsContainer.innerHTML = '';
     if (Object.keys(products).length === 0) {
         productListingsContainer.innerHTML = '<p class="no-products">No products found.</p>';
+        console.log("No products to display after filtering."); // DEBUG LOG
         return;
     }
 
     Object.values(products).forEach(product => {
+        console.log("Attempting to display product:", product.title, "ID:", product.id); // DEBUG LOG
         const productCard = document.createElement('div');
         productCard.className = 'product-card';
         productCard.dataset.productId = product.id;
@@ -178,13 +177,20 @@ function displayProducts(products) {
 }
 
 function loadProducts() {
+    console.log("Loading products from Firebase..."); // DEBUG LOG
     const productsRef = ref(database, 'products/'); // Corrected path
     onValue(productsRef, (snapshot) => {
         allProducts = {};
+        if (!snapshot.exists()) {
+            console.log("No snapshot data found at 'products/'."); // DEBUG LOG
+        }
         snapshot.forEach((childSnapshot) => {
             const product = childSnapshot.val();
+            // It's good practice to also log the key to compare with product.id
+            console.log("Fetched product:", product.title, "Firebase Key:", childSnapshot.key, "Product ID:", product.id); // DEBUG LOG
             allProducts[product.id] = product;
         });
+        console.log("All products loaded into allProducts:", allProducts); // DEBUG LOG
         filterAndSortProducts(); // Re-filter and display all products
     }, (error) => {
         console.error("Error loading products:", error);
@@ -193,24 +199,29 @@ function loadProducts() {
 }
 
 function filterAndSortProducts() {
+    console.log("filterAndSortProducts called. Initial allProducts:", allProducts); // DEBUG LOG
     let filteredProducts = Object.values(allProducts);
 
     // Apply search filter
     const searchTerm = searchInput.value.toLowerCase();
     if (searchTerm) {
+        const initialCount = filteredProducts.length;
         filteredProducts = filteredProducts.filter(product =>
             product.title.toLowerCase().includes(searchTerm) ||
             product.description.toLowerCase().includes(searchTerm) ||
             product.brand.toLowerCase().includes(searchTerm) ||
             product.category.toLowerCase().includes(searchTerm)
         );
+        console.log(`Search term "${searchTerm}" applied. Filtered from ${initialCount} to ${filteredProducts.length} products.`); // DEBUG LOG
     }
 
     // Apply category filter
     const activeCategoryButton = document.querySelector('.category-button.active');
     if (activeCategoryButton && activeCategoryButton.dataset.category !== 'all') {
         const category = activeCategoryButton.dataset.category;
+        const initialCount = filteredProducts.length;
         filteredProducts = filteredProducts.filter(product => product.category === category);
+        console.log(`Category filter "${category}" applied. Filtered from ${initialCount} to ${filteredProducts.length} products.`); // DEBUG LOG
     }
 
     // Apply sort order
@@ -227,6 +238,7 @@ function filterAndSortProducts() {
         filteredProducts.sort((a, b) => (b.featured || false) - (a.featured || false));
     }
 
+    console.log("Products after filtering and sorting:", filteredProducts); // DEBUG LOG
     displayProducts(filteredProducts);
 }
 
