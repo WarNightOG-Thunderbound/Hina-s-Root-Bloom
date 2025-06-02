@@ -49,6 +49,10 @@ const productList = document.getElementById('product-list');
 const orderList = document.getElementById('order-list');
 
 const analyticsTimeframeSelect = document.getElementById('analytics-timeframe');
+const totalProductsMetric = document.getElementById('total-products-metric');
+const totalOrdersMetric = document.getElementById('total-orders-metric');
+const pendingOrdersMetric = document.getElementById('pending-orders-metric');
+const totalRevenueMetric = document.getElementById('total-revenue-metric');
 const totalSalesSummary = document.getElementById('total-sales-summary');
 const totalOrdersSummary = document.getElementById('total-orders-summary');
 const avgRatingSummary = document.getElementById('avg-rating-summary');
@@ -67,7 +71,7 @@ let productComparisonChart;
 let allProducts = {};
 let allOrders = {};
 let allRatings = {};
-let uploadedImageUrls = []; // To store URLs of images uploaded for the current product being added/edited
+let uploadedImageFiles = []; // To store File objects for the current product being added/edited
 
 // Define all possible categories
 const allCategories = [
@@ -133,10 +137,12 @@ function showConfirm(message, title = 'Confirm Action', okButtonText = 'Yes', ca
 // --- Firebase Authentication ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
+        // User is signed in, display admin dashboard
         authSection.style.display = 'none';
         adminDashboard.style.display = 'block';
         loadAdminData();
     } else {
+        // User is signed out, display login form
         authSection.style.display = 'flex';
         adminDashboard.style.display = 'none';
     }
@@ -177,21 +183,21 @@ function populateCategorySelect() {
 
 productImageInput.addEventListener('change', (event) => {
     imagePreviewContainer.innerHTML = ''; // Clear previous previews
-    uploadedImageUrls = []; // Reset uploaded URLs
+    uploadedImageFiles = []; // Reset uploaded files
     const files = event.target.files;
     if (files.length > 0) {
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            uploadedImageFiles.push(file); // Store the actual File object
             const reader = new FileReader();
             reader.onload = (e) => {
                 const previewDiv = document.createElement('div');
                 previewDiv.className = 'image-preview';
                 previewDiv.innerHTML = `
                     <img src="${e.target.result}" alt="Image Preview">
-                    <button class="remove-image-btn" data-index="${i}">&times;</button>
+                    <button class="remove-image-btn" data-index="${uploadedImageFiles.length - 1}">&times;</button>
                 `;
                 imagePreviewContainer.appendChild(previewDiv);
-                // Store base64 for immediate display, actual upload happens on save
             };
             reader.readAsDataURL(file);
         }
@@ -201,16 +207,25 @@ productImageInput.addEventListener('change', (event) => {
 imagePreviewContainer.addEventListener('click', (event) => {
     if (event.target.classList.contains('remove-image-btn')) {
         const indexToRemove = parseInt(event.target.dataset.index);
-        const files = Array.from(productImageInput.files);
-        files.splice(indexToRemove, 1); // Remove file from the list
-        
-        // Create a new DataTransfer object to update the input's files
-        const dataTransfer = new DataTransfer();
-        files.forEach(file => dataTransfer.items.add(file));
-        productImageInput.files = dataTransfer.files;
+        uploadedImageFiles.splice(indexToRemove, 1); // Remove file from the list
 
-        // Re-trigger the change event to update previews
-        productImageInput.dispatchEvent(new Event('change'));
+        // Re-render previews to reflect removal and update data-index attributes
+        imagePreviewContainer.innerHTML = '';
+        uploadedImageFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'image-preview';
+                previewDiv.innerHTML = `
+                    <img src="${e.target.result}" alt="Image Preview">
+                    <button class="remove-image-btn" data-index="${index}">&times;</button>
+                `;
+                imagePreviewContainer.appendChild(previewDiv);
+            };
+            reader.readAsDataURL(file);
+        });
+        // Clear the file input itself, as we're managing files via uploadedImageFiles array
+        productImageInput.value = '';
     }
 });
 
@@ -224,7 +239,6 @@ addProductButton.addEventListener('click', async () => {
     const category = productCategorySelect.value;
     const videoUrl = productVideoUrlInput.value;
     const featured = productFeaturedCheckbox.checked;
-    const files = productImageInput.files;
 
     if (!title || !description || isNaN(price) || isNaN(stock) || !brand || !category) {
         showAlert("Please fill all product fields correctly.", "Validation Error");
@@ -232,15 +246,19 @@ addProductButton.addEventListener('click', async () => {
     }
 
     let imageUrls = [];
-    if (files.length > 0) {
-        for (const file of Array.from(files)) {
+    // Upload new images and include existing ones
+    for (const file of uploadedImageFiles) {
+        // Check if it's a File object (newly selected) or a URL string (existing)
+        if (typeof file === 'string') {
+            imageUrls.push(file); // It's an existing URL, just add it
+        } else {
             const imageRef = storageRef(storage, `product_images/${Date.now()}_${file.name}`);
             await uploadBytes(imageRef, file);
             const downloadURL = await getDownloadURL(imageRef);
             imageUrls.push(downloadURL);
         }
     }
-    console.log("Uploaded Image URLs:", imageUrls); // Debugging: Check URLs before saving
+    console.log("Final Image URLs to save:", imageUrls); // Debugging: Check URLs before saving
 
     const productId = addProductButton.dataset.productId || push(ref(database, 'products/')).key; // Use existing ID for edit, new for add
 
@@ -278,7 +296,7 @@ function clearProductForm() {
     productCategorySelect.value = '';
     productImageInput.value = ''; // Clear file input
     imagePreviewContainer.innerHTML = ''; // Clear image previews
-    uploadedImageUrls = []; // Reset stored URLs
+    uploadedImageFiles = []; // Reset stored files
     productVideoUrlInput.value = '';
     productFeaturedCheckbox.checked = false;
     addProductButton.textContent = 'Add Product';
@@ -355,16 +373,22 @@ function loadProductForEdit(productId) {
 
         // Display existing images for edit
         imagePreviewContainer.innerHTML = '';
-        uploadedImageUrls = product.imageUrls || []; // Load existing URLs
-        uploadedImageUrls.forEach((url, index) => {
-            const previewDiv = document.createElement('div');
-            previewDiv.className = 'image-preview';
-            previewDiv.innerHTML = `
-                <img src="${url}" alt="Image Preview">
-                <button class="remove-image-btn" data-index="${index}">&times;</button>
-            `;
-            imagePreviewContainer.appendChild(previewDiv);
-        });
+        uploadedImageFiles = []; // Clear current files
+        if (product.imageUrls && Array.isArray(product.imageUrls)) {
+            product.imageUrls.forEach((url, index) => {
+                // Store URLs directly as part of uploadedImageFiles for re-upload logic
+                uploadedImageFiles.push(url); 
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'image-preview';
+                previewDiv.innerHTML = `
+                    <img src="${url}" alt="Image Preview">
+                    <button class="remove-image-btn" data-index="${index}">&times;</button>
+                `;
+                imagePreviewContainer.appendChild(previewDiv);
+            });
+        }
+        // Clear the file input itself
+        productImageInput.value = '';
     } else {
         showAlert("Product not found for editing.", "Error");
     }
@@ -677,7 +701,8 @@ function updateProductComparisonChart() {
             label: product1.title,
             data: data1,
             backgroundColor: 'rgba(0, 188, 212, 0.6)',
-            borderColor: var(--color-cyan-primary),
+            // Fix: Use string literal for borderColor
+            borderColor: '#17a2b8', // Corresponds to --color-cyan-primary
             borderWidth: 1
         });
     }
@@ -686,7 +711,8 @@ function updateProductComparisonChart() {
             label: product2.title,
             data: data2,
             backgroundColor: 'rgba(233, 30, 99, 0.6)',
-            borderColor: var(--color-pink-primary),
+            // Fix: Use string literal for borderColor
+            borderColor: '#e83e8c', // Corresponds to --color-pink-primary
             borderWidth: 1
         });
     }
