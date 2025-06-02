@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-import { getDatabase, ref, onValue, push, serverTimestamp, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getDatabase, ref, onValue, push, serverTimestamp, update, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"; // Added 'set' here
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -346,7 +346,7 @@ confirmCodOrderButton.addEventListener('click', async () => {
             // Other details could be added
         };
 
-        await set(newOrderRef, orderData);
+        await set(newOrderRef, orderData); // 'set' is now imported
 
         // Decrease product stock
         const productRef = ref(database, 'products/' + currentProduct.id);
