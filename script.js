@@ -1,5 +1,4 @@
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBr6A2OGh-nwfMzOwmVOWs1-u5ylZ2Vemw",
   authDomain: "hina-s-rootandbloomstore.firebaseapp.com",
@@ -11,26 +10,29 @@ const firebaseConfig = {
   measurementId: "G-TT31HC3NZ3"
 };
 
-// Initialize Firebase
+// Initialize Firebase using the global firebase object
 const app = firebase.initializeApp(firebaseConfig);
 const analytics = firebase.analytics();
 const database = firebase.database();
+
+// Firebase function references (using the global firebase object)
 const ref = firebase.database.ref;
 const onValue = firebase.database.onValue;
 const push = firebase.database.push;
 const set = firebase.database.set;
 const get = firebase.database.get;
 const child = firebase.database.child;
+const update = firebase.database.update; // Added update for partial updates
 const serverTimestamp = firebase.database.ServerValue.TIMESTAMP;
 
 // Global variables
 const productModal = document.getElementById('product-modal');
 const orderModal = document.getElementById('order-modal');
-const ratingModal = document.getElementById('rating-modal'); // New rating modal
+const ratingModal = document.getElementById('rating-modal');
 const closeButtons = document.querySelectorAll('.close-button');
 const productContainer = document.getElementById('product-container');
 const categoryButtons = document.querySelectorAll('.category-button');
-const placeOrderButton = document.getElementById('add-to-cart-button'); // Changed ID to match HTML
+const placeOrderButton = document.getElementById('add-to-cart-button'); // Corrected ID
 const searchBar = document.getElementById('search-bar');
 const navLinks = document.querySelectorAll('.main-nav a');
 
@@ -40,6 +42,8 @@ const confirmCodOrderButton = document.getElementById('confirm-cod-order');
 const codNameInput = document.getElementById('cod-name');
 const codPhoneInput = document.getElementById('cod-phone');
 const codAddressInput = document.getElementById('cod-address');
+const orderModalProductTitle = document.getElementById('order-modal-product-title');
+const orderModalProductPrice = document.getElementById('order-modal-product-price');
 
 // Rating modal elements
 const ratingProductTitleSpan = document.getElementById('rating-product-title');
@@ -141,11 +145,14 @@ function displayProducts(productsToDisplay) {
         const imageUrl = product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/300x200.png?text=No+Image';
 
         productCard.innerHTML = `
-            <img src="${imageUrl}" alt="${product.title}">
-            <h3>${product.title}</h3>
-            <p class="product-brand">${product.brand || 'N/A'}</p>
-            <p class="product-price">PKR ${product.price.toLocaleString()}</p>
-            ${ratingStarsHtml}
+            <img src="${imageUrl}" alt="${product.title}" onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200.png?text=Error';">
+            <div class="product-info">
+                <h3>${product.title}</h3>
+                <p class="product-brand-card"><strong>Brand:</strong> ${product.brand || 'N/A'}</p>
+                <p>${product.description.substring(0, 80)}...</p>
+                <p class="price">PKR ${product.price.toLocaleString()}</p>
+                ${ratingStarsHtml}
+            </div>
         `;
 
         productCard.addEventListener('click', () => openProductModal(product));
@@ -163,9 +170,6 @@ function openProductModal(product) {
     document.getElementById('modal-product-price').textContent = `PKR ${product.price.toLocaleString()}`;
     document.getElementById('modal-product-stock').textContent = product.stock !== undefined ? (product.stock > 0 ? `${product.stock} available` : 'Out of Stock') : 'N/A';
     placeOrderButton.disabled = product.stock === 0; // Disable button if out of stock
-
-    const averageRating = product.numberOfRatings > 0 ? (product.totalStarsSum / product.numberOfRatings).toFixed(1) : 'N/A';
-    document.getElementById('modal-product-rating').textContent = `${averageRating} / 7 (${product.numberOfRatings || 0} reviews)`;
 
 
     const imageGallery = document.getElementById('modal-product-images');
@@ -186,6 +190,36 @@ function openProductModal(product) {
         imageGallery.appendChild(img);
     }
 
+    const productVideo = document.getElementById('modal-product-video');
+    if (product.videoUrl) {
+        // Basic YouTube URL to Embed URL conversion
+        let embedUrl = product.videoUrl;
+        if (product.videoUrl.includes("watch?v=")) {
+            embedUrl = product.videoUrl.replace("watch?v=", "embed/");
+        }
+        // Remove other parameters like &list=...
+        const queryIndex = embedUrl.indexOf('?');
+        if (queryIndex !== -1) {
+             const videoIdPart = embedUrl.substring(0, queryIndex);
+             const params = new URLSearchParams(embedUrl.substring(queryIndex));
+             if (params.has('v')) { // For URLs like /embed/?v=VIDEO_ID
+                 embedUrl = `https://www.youtube.com/embed/${params.get('v')}`;
+             } else if (videoIdPart.includes("/embed/")) { // If it's already an embed link but with params
+                 embedUrl = videoIdPart;
+             }
+        }
+        // Ensure it's an HTTPS URL for embedding
+        if (!embedUrl.startsWith('https://')) {
+            embedUrl = embedUrl.replace('http://', 'https://');
+        }
+
+        productVideo.src = embedUrl;
+        productVideo.style.display = 'block';
+    } else {
+        productVideo.style.display = 'none';
+        productVideo.src = '';
+    }
+
     productModal.style.display = 'flex';
 }
 
@@ -194,6 +228,7 @@ closeButtons.forEach(button => {
         productModal.style.display = 'none';
         orderModal.style.display = 'none';
         ratingModal.style.display = 'none';
+        // No need to hide codForm explicitly here, it's inside orderModal
     });
 });
 
@@ -259,8 +294,8 @@ searchBar.addEventListener('input', () => {
 placeOrderButton.addEventListener('click', () => {
     if (currentProduct) {
         // Pre-fill order modal with product details
-        document.getElementById('order-modal-product-title').textContent = currentProduct.title;
-        document.getElementById('order-modal-product-price').textContent = `PKR ${currentProduct.price.toLocaleString()}`;
+        orderModalProductTitle.textContent = currentProduct.title;
+        orderModalProductPrice.textContent = `PKR ${currentProduct.price.toLocaleString()}`;
         orderModal.style.display = 'flex';
         productModal.style.display = 'none'; // Hide product modal
     }
@@ -297,52 +332,47 @@ codForm.addEventListener('submit', async (e) => {
         return;
     }
 
-    if (currentProduct.stock === 0) {
-        showAlert("Sorry, this product just went out of stock.", "Out of Stock");
+    // Re-check stock just before placing order
+    const productRef = ref(database, 'products/' + currentProduct.id);
+    const productSnapshot = await get(productRef);
+    const productData = productSnapshot.val();
+
+    if (!productData || productData.stock === 0) {
+        showAlert("Sorry, this product just went out of stock. Please try again later.", "Out of Stock");
         orderModal.style.display = 'none';
         confirmCodOrderButton.disabled = false;
         confirmCodOrderButton.textContent = 'Confirm Order';
         return;
     }
 
-
     try {
         // Decrement product stock
-        const productRef = ref(database, 'products/' + currentProduct.id);
-        const productSnapshot = await get(child(productRef, '')); // Use child('') to get the ref for 'productId' itself
-        const productData = productSnapshot.val();
+        const newStock = productData.stock - 1;
+        await update(productRef, { stock: newStock }); // Use update for partial change
 
-        if (productData && productData.stock > 0) {
-            const newStock = productData.stock - 1;
-            await set(productRef, { ...productData, stock: newStock });
+        // Record the order
+        const newOrderRef = push(ref(database, 'orders'));
+        currentOrderId = newOrderRef.key; // Store for potential rating
+        await set(newOrderRef, {
+            id: currentOrderId,
+            productId: currentProduct.id,
+            productTitle: currentProduct.title,
+            productPrice: currentProduct.price,
+            customerName: name,
+            customerPhone: phone,
+            customerAddress: address,
+            orderDate: serverTimestamp(), // Use serverTimestamp for consistency
+            status: 'pending',
+            totalAmount: currentProduct.price // Assuming single item order
+        });
 
-            // Record the order
-            const newOrderRef = push(ref(database, 'orders'));
-            currentOrderId = newOrderRef.key; // Store for potential rating
-            await set(newOrderRef, {
-                id: currentOrderId,
-                productId: currentProduct.id,
-                productTitle: currentProduct.title,
-                productPrice: currentProduct.price,
-                customerName: name,
-                customerPhone: phone,
-                customerAddress: address,
-                orderDate: serverTimestamp(),
-                status: 'pending'
-            });
+        showAlert('Your order has been placed successfully! We will contact you soon for confirmation.', 'Order Placed');
+        orderModal.style.display = 'none';
 
-            showAlert('Your order has been placed successfully! We will contact you soon for confirmation.', 'Order Placed');
-            orderModal.style.display = 'none';
-
-            // Optionally, open rating modal after a short delay or confirmation
-            const confirmedRating = await showConfirm('Would you like to rate this product now?', 'Rate Product', 'Rate Now', 'Later');
-            if (confirmedRating) {
-                openRatingModal(currentProduct, currentOrderId);
-            }
-
-        } else {
-            showAlert("Sorry, this product just went out of stock. Please try again later.", "Out of Stock");
-            orderModal.style.display = 'none';
+        // Optionally, open rating modal after a short delay or confirmation
+        const confirmedRating = await showConfirm('Would you like to rate this product now?', 'Rate Product', 'Rate Now', 'Later');
+        if (confirmedRating) {
+            openRatingModal(currentProduct, currentOrderId);
         }
 
     } catch (error) {
@@ -400,7 +430,7 @@ submitRatingButton.addEventListener('click', async () => {
         return;
     }
     if (!currentProduct || !currentOrderId) {
-        showAlert('Error: Product or Order information missing for rating.', 'Error');
+        showAlert('Error: Product or Order information missing for rating. Please try ordering again.', 'Error');
         return;
     }
 
@@ -410,7 +440,7 @@ submitRatingButton.addEventListener('click', async () => {
     try {
         // Update product's total stars and number of ratings
         const productRef = ref(database, 'products/' + currentProduct.id);
-        const snapshot = await get(child(productRef, '')); // Use child('') to get the ref for 'productId' itself
+        const snapshot = await get(productRef);
         const productData = snapshot.val();
 
         if (productData) {
@@ -418,13 +448,12 @@ submitRatingButton.addEventListener('click', async () => {
             const oldNumberOfRatings = productData.numberOfRatings || 0;
             const newTotalStarsSum = oldTotalStarsSum + selectedRating;
             const newNumberOfRatings = oldNumberOfRatings + 1;
-            const newAverageRating = (newTotalStarsSum / newNumberOfRatings).toFixed(2);
+            const newAverageRating = (newTotalStarsSum / newNumberOfRatings); // Calculate as number
 
-            await set(productRef, {
-                ...productData,
+            await update(productRef, { // Use update for partial change
                 totalStarsSum: newTotalStarsSum,
                 numberOfRatings: newNumberOfRatings,
-                averageRating: parseFloat(newAverageRating) // Store as number for sorting/calculations
+                averageRating: parseFloat(newAverageRating.toFixed(2)) // Store as number for sorting/calculations
             });
 
             // Record the individual rating
@@ -469,13 +498,13 @@ document.addEventListener('DOMContentLoaded', () => {
         showAlert(`Error loading products: ${error.message}.`, 'Data Error');
     });
 
-    const homeView = document.getElementById('products-section'); // Correctly identify home view
-    const supportView = document.getElementById('support-view');
-    const supportNavLink = document.getElementById('contact-us-section').querySelector('a[href="#contact-us-section"]'); // Assuming contact link leads to support
+    const homeView = document.getElementById('home-view'); // Main product listing section
+    const supportView = document.getElementById('support-view'); // Support iframe section
+    // Correctly target the 'Contact Us' nav link to toggle support view
+    const contactUsNavLink = document.querySelector('nav.main-nav ul li a[href="#contact-us-section"]');
     const backToHomeButton = document.getElementById('back-to-home');
-    const submitSupportQueryButton = document.getElementById('submit-support-query');
 
-    // Initialize display states
+    // Initial display states
     if (homeView) homeView.style.display = 'block';
     if (supportView) supportView.style.display = 'none';
 
@@ -485,8 +514,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Event listener for the "Contact Us" navigation link to show support view
-    if (supportNavLink) {
-        supportNavLink.addEventListener('click', (event) => {
+    if (contactUsNavLink) {
+        contactUsNavLink.addEventListener('click', (event) => {
             event.preventDefault(); // Prevent default link behavior (like jumping to #)
             showView(supportView, homeView);
             window.scrollTo(0, 0); // Scroll to top when switching view
@@ -498,54 +527,6 @@ document.addEventListener('DOMContentLoaded', () => {
         backToHomeButton.addEventListener('click', () => {
             showView(homeView, supportView);
             window.scrollTo(0, 0); // Scroll to top when switching back
-        });
-    }
-
-    // Event listener for Submit Support Query button
-    if (submitSupportQueryButton) {
-        submitSupportQueryButton.addEventListener('click', async () => {
-            const name = document.getElementById('support-name').value.trim();
-            const email = document.getElementById('support-email').value.trim();
-            const subject = document.getElementById('support-subject').value.trim();
-            const message = document.getElementById('support-message').value.trim();
-
-            if (!name || !email || !subject || !message) {
-                showAlert('Please fill in all fields for your support query.', 'Missing Information');
-                return;
-            }
-
-            // Basic email validation
-            if (!/\S+@\S+\.\S+/.test(email)) {
-                showAlert('Please enter a valid email address.', 'Invalid Email');
-                return;
-            }
-
-            submitSupportQueryButton.disabled = true;
-            submitSupportQueryButton.textContent = 'Submitting...';
-
-            try {
-                const newQueryRef = push(ref(database, 'supportQueries'));
-                await set(newQueryRef, {
-                    name,
-                    email,
-                    subject,
-                    message,
-                    timestamp: serverTimestamp(),
-                    status: 'pending'
-                });
-                showAlert('Your support query has been submitted successfully!', 'Query Submitted');
-                // Clear form
-                document.getElementById('support-name').value = '';
-                document.getElementById('support-email').value = '';
-                document.getElementById('support-subject').value = '';
-                document.getElementById('support-message').value = '';
-            } catch (error) {
-                showAlert('Failed to submit query: ' + error.message, 'Submission Error');
-                console.error('Support query submission error:', error);
-            } finally {
-                submitSupportQueryButton.disabled = false;
-                submitSupportQueryButton.textContent = 'Submit Query';
-            }
         });
     }
 });
