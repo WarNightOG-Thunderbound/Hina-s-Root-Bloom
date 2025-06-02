@@ -53,12 +53,6 @@ const ratingProductTitle = document.getElementById('rating-product-title');
 const ratingStarsContainer = document.getElementById('rating-stars-container');
 const submitRatingButton = document.getElementById('submit-rating-button');
 
-// Category Sidebar Elements
-const categorySidebarToggle = document.getElementById('category-sidebar-toggle');
-const categorySidebar = document.getElementById('category-sidebar');
-const categorySidebarOverlay = document.getElementById('category-sidebar-overlay');
-const sidebarCategoryButtons = categorySidebar ? categorySidebar.querySelectorAll('.category-button') : []; // For sidebar buttons
-
 // Custom Alert/Confirm Elements
 const customAlertModal = document.getElementById('custom-alert-modal');
 const customModalTitle = document.getElementById('custom-modal-title');
@@ -162,9 +156,8 @@ function displayProducts(products) {
         productCard.className = 'product-card';
         productCard.dataset.productId = product.id;
 
-        // Debugging image loading: Log the imageUrls
-        console.log(`Product: ${product.title}, Image URLs:`, product.imageUrls);
-        const imageUrl = product.imageUrls && Array.isArray(product.imageUrls) && product.imageUrls[0]
+        // Determine image URL with robust fallback
+        const imageUrl = product.imageUrls && Array.isArray(product.imageUrls) && product.imageUrls.length > 0
                          ? product.imageUrls[0]
                          : 'https://placehold.co/400x300/E9ECEF/495057?text=No+Image'; // Default placeholder image
         
@@ -225,15 +218,12 @@ function filterAndSortProducts() {
     }
 
     // Apply category filter
-    // Check both desktop and sidebar category buttons
+    // Only consider desktop category buttons as sidebar is removed
     let activeCategory = 'all';
     const desktopActiveButton = document.querySelector('.filter-sort-section .category-button.active');
-    const sidebarActiveButton = document.querySelector('.category-sidebar .category-button.active');
-
+    
     if (desktopActiveButton) {
         activeCategory = desktopActiveButton.dataset.category;
-    } else if (sidebarActiveButton) {
-        activeCategory = sidebarActiveButton.dataset.category;
     }
 
     if (activeCategory !== 'all') {
@@ -267,7 +257,10 @@ function openProductModal(event) {
         return;
     }
 
-    modalProductImage.src = product.imageUrls && product.imageUrls[0] ? product.imageUrls[0] : 'https://placehold.co/400x300/E9ECEF/495057?text=No+Image';
+    // Determine image URL with robust fallback for modal
+    modalProductImage.src = product.imageUrls && Array.isArray(product.imageUrls) && product.imageUrls.length > 0
+                            ? product.imageUrls[0]
+                            : 'https://placehold.co/400x300/E9ECEF/495057?text=No+Image';
     modalProductTitle.textContent = product.title;
     modalProductPrice.textContent = `PKR ${product.price.toLocaleString()}`;
     modalProductDescription.textContent = product.description;
@@ -529,29 +522,6 @@ async function submitProductRating() {
     }
 }
 
-// --- Category Sidebar Logic ---
-let touchStartX = 0;
-let touchEndX = 0;
-
-function openCategorySidebar() {
-    categorySidebar.classList.add('open');
-    categorySidebarOverlay.style.display = 'block';
-}
-
-function closeCategorySidebar() {
-    categorySidebar.classList.remove('open');
-    categorySidebarOverlay.style.display = 'none';
-}
-
-function handleGesture() {
-    if (touchEndX < touchStartX - 50) { // Swiped left
-        closeCategorySidebar();
-    }
-    if (touchEndX > touchStartX + 50) { // Swiped right
-        openCategorySidebar();
-    }
-}
-
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     // Initial load of products
@@ -575,8 +545,6 @@ document.addEventListener('DOMContentLoaded', () => {
     categoryFilterButtons.forEach(button => {
         button.addEventListener('click', () => {
             categoryFilterButtons.forEach(btn => btn.classList.remove('active'));
-            // Ensure sidebar buttons are also deactivated
-            sidebarCategoryButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             filterAndSortProducts();
         });
@@ -646,35 +614,4 @@ document.addEventListener('DOMContentLoaded', () => {
             closeRatingModal();
         }
     });
-
-    // --- Category Sidebar Event Listeners ---
-    if (categorySidebarToggle) {
-        categorySidebarToggle.addEventListener('click', openCategorySidebar);
-    }
-
-    if (categorySidebarOverlay) {
-        categorySidebarOverlay.addEventListener('click', closeCategorySidebar);
-    }
-
-    // Event listeners for sidebar category filter buttons
-    sidebarCategoryButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            // Deactivate desktop buttons
-            categoryFilterButtons.forEach(btn => btn.classList.remove('active'));
-            // Deactivate other sidebar buttons
-            sidebarCategoryButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active'); // Activate clicked sidebar button
-            filterAndSortProducts();
-            closeCategorySidebar(); // Close sidebar after selection
-        });
-    });
-
-    // Swipe gestures for opening/closing sidebar on mobile
-    document.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
-    });
-
-    document.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches[0].screenX;
-        handleGesture();
-    });
+});
