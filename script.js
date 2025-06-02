@@ -15,16 +15,6 @@ const app = firebase.initializeApp(firebaseConfig);
 const analytics = firebase.analytics();
 const database = firebase.database(); // Get the database service instance
 
-// Firebase function references (using the service instances)
-const ref = firebase.database.ref;
-const onValue = firebase.database.onValue;
-const push = firebase.database.push;
-const set = firebase.database.set;
-const get = firebase.database.get;
-const child = firebase.database.child;
-const update = firebase.database.update;
-const serverTimestamp = firebase.database.ServerValue.TIMESTAMP;
-
 // Global variables
 const productModal = document.getElementById('product-modal');
 const orderModal = document.getElementById('order-modal');
@@ -195,7 +185,7 @@ function openProductModal(product) {
         // Basic YouTube URL to Embed URL conversion
         let embedUrl = product.videoUrl;
         if (product.videoUrl.includes("watch?v=")) {
-            embedUrl = product.videoUrl.replace("watch?v=", "embed/");
+            embedUrl = embedUrl.replace("watch?v=", "embed/");
         }
         // Remove other parameters like &list=...
         const queryIndex = embedUrl.indexOf('?');
@@ -332,9 +322,9 @@ codForm.addEventListener('submit', async (e) => {
     }
 
     // Re-check stock just before placing order
-    // Correctly call ref on the database object and get
-    const productRef = ref(database, 'products/' + currentProduct.id);
-    const productSnapshot = await get(productRef);
+    // Correctly call database.ref() and .once()
+    const productRef = database.ref('products/' + currentProduct.id);
+    const productSnapshot = await productRef.once('value');
     const productData = productSnapshot.val();
 
     if (!productData || productData.stock === 0) {
@@ -348,15 +338,15 @@ codForm.addEventListener('submit', async (e) => {
     try {
         // Decrement product stock
         const newStock = productData.stock - 1;
-        // Correctly call update on a database ref
-        await update(productRef, { stock: newStock });
+        // Correctly call .update() on the productRef
+        await productRef.update({ stock: newStock });
 
         // Record the order
-        // Correctly call push on a database ref
-        const newOrderRef = push(ref(database, 'orders'));
+        // Correctly call .push() on database.ref()
+        const newOrderRef = database.ref('orders').push();
         currentOrderId = newOrderRef.key; // Store for potential rating
-        // Correctly call set on a database ref
-        await set(newOrderRef, {
+        // Correctly call .set() on newOrderRef
+        await newOrderRef.set({
             id: currentOrderId,
             productId: currentProduct.id,
             productTitle: currentProduct.title,
@@ -364,7 +354,7 @@ codForm.addEventListener('submit', async (e) => {
             customerName: name,
             customerPhone: phone,
             customerAddress: address,
-            orderDate: serverTimestamp(), // Use serverTimestamp for consistency
+            orderDate: firebase.database.ServerValue.TIMESTAMP, // Correct ServerValue usage
             status: 'pending',
             totalAmount: currentProduct.price // Assuming single item order
         });
@@ -442,9 +432,9 @@ submitRatingButton.addEventListener('click', async () => {
 
     try {
         // Update product's total stars and number of ratings
-        // Correctly call ref on the database object and get
-        const productRef = ref(database, 'products/' + currentProduct.id);
-        const snapshot = await get(productRef);
+        // Correctly call database.ref() and .once()
+        const productRef = database.ref('products/' + currentProduct.id);
+        const snapshot = await productRef.once('value');
         const productData = snapshot.val();
 
         if (productData) {
@@ -454,23 +444,23 @@ submitRatingButton.addEventListener('click', async () => {
             const newNumberOfRatings = oldNumberOfRatings + 1;
             const newAverageRating = (newTotalStarsSum / newNumberOfRatings); // Calculate as number
 
-            // Correctly call update on a database ref
-            await update(productRef, {
+            // Correctly call .update() on productRef
+            await productRef.update({
                 totalStarsSum: newTotalStarsSum,
                 numberOfRatings: newNumberOfRatings,
                 averageRating: parseFloat(newAverageRating.toFixed(2)) // Store as number for sorting/calculations
             });
 
             // Record the individual rating
-            // Correctly call push on a database ref
-            const newRatingRef = push(ref(database, 'ratings'));
-            // Correctly call set on a database ref
-            await set(newRatingRef, {
+            // Correctly call .push() on database.ref()
+            const newRatingRef = database.ref('ratings').push();
+            // Correctly call .set() on newRatingRef
+            await newRatingRef.set({
                 id: newRatingRef.key,
                 productId: currentProduct.id,
                 orderId: currentOrderId,
                 stars: selectedRating,
-                timestamp: serverTimestamp()
+                timestamp: firebase.database.ServerValue.TIMESTAMP
             });
 
             showAlert('Thank you for your rating!', 'Rating Submitted');
@@ -489,9 +479,9 @@ submitRatingButton.addEventListener('click', async () => {
 
 // --- Firebase Product Data Listener ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Correctly call ref on the database object and onValue
-    const productsRef = ref(database, 'products');
-    onValue(productsRef, (snapshot) => {
+    // Correctly call database.ref() and .on()
+    const productsRef = database.ref('products');
+    productsRef.on('value', (snapshot) => {
         allProducts = {};
         if (snapshot.exists()) {
             snapshot.forEach(childSnapshot => {
