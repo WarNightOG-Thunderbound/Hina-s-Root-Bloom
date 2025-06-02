@@ -577,7 +577,6 @@ h2 {
 
     .product-grid {
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Adjust minmax */
-        gap: 30px;
     }
 
     .product-card img {
