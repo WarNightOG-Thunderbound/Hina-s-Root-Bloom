@@ -47,7 +47,11 @@
             </div>
         </section>
 
-        <section id="products-section" class="products-section">
+        <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+
+        <section id="home-view" class="product-listing">
             <h2>Our Products</h2>
             <div id="product-container" class="product-grid">
                 <p class="no-products-message">Loading products...</p>
@@ -64,65 +68,34 @@
             <p>At Hina's Root & Bloom Store, we are more than just a retail space; we are a community dedicated to promoting holistic well-being. Our mission is to provide high-quality, ethically sourced products that enhance your life naturally. We carefully select each item, prioritizing organic, sustainable, and cruelty-free options. Our team is passionate about educating and empowering our customers to make conscious choices for a healthier lifestyle and a better world.</p>
         </section>
 
-        <section id="contact-us-section" class="info-section">
-            <h2>Contact Us</h2>
-            <p>Have questions or need assistance? Reach out to us!</p>
-            <address>
-                Email: <a href="mailto:info@hinarootandbloom.store">info@hinarootandbloom.store</a><br>
-                Phone: <a href="tel:+92321XXXXXXX">+92 321 XXX XXXX</a><br>
-                Address: Lahore, Punjab, Pakistan
-            </address>
-            <p>Follow us on social media for updates and new arrivals!</p>
-            <div class="social-links">
-                <a href="#" class="social-icon"><i class="fab fa-facebook"></i></a>
-                <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-            </div>
-        </section>
-
-        <section id="support-view" class="support-view" style="display: none;">
+        <section id="support-view" class="info-section support-iframe-section" style="display: none;">
             <h2>Customer Support</h2>
-            <p>Welcome to our support section. Please provide details of your query.</p>
-            <div class="support-form-group">
-                <label for="support-name">Your Name:</label>
-                <input type="text" id="support-name" placeholder="Enter your name">
-            </div>
-            <div class="support-form-group">
-                <label for="support-email">Your Email:</label>
-                <input type="email" id="support-email" placeholder="Enter your email">
-            </div>
-            <div class="support-form-group">
-                <label for="support-subject">Subject:</label>
-                <input type="text" id="support-subject" placeholder="Subject of your query">
-            </div>
-            <div class="support-form-group">
-                <label for="support-message">Message:</label>
-                <textarea id="support-message" placeholder="Describe your issue or question"></textarea>
-            </div>
-            <button id="submit-support-query" class="place-order-button">Submit Query</button>
+            <p>Here you can access our dedicated support application:</p>
+            <iframe src="https://warnightog-thunderbound.github.io/SHJR-Support-APP" class="support-app-iframe-embed"></iframe>
             <button id="back-to-home" class="place-order-button secondary">Back to Home</button>
         </section>
 
     </main>
 
-    <div id="product-modal" class="modal-overlay">
+    <div id="product-modal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
-            <div class="modal-product-details">
-                <div id="modal-product-images" class="modal-product-images">
-                    </div>
+            <div class="product-details">
                 <h3 id="modal-product-title"></h3>
-                <p id="modal-product-brand" class="product-brand"></p>
+                <div class="product-media">
+                    <div id="modal-product-images" class="image-gallery"></div>
+                    <video id="modal-product-video" controls class="product-video" style="display:none;"></video>
+                </div>
+                <p><strong>Brand:</strong> <span id="modal-product-brand"></span></p>
                 <p id="modal-product-description"></p>
-                <p class="product-price">Price: <span id="modal-product-price"></span></p>
-                <p class="product-stock">Stock: <span id="modal-product-stock"></span></p>
-                <p class="product-rating">Rating: <span id="modal-product-rating">N/A</span></p>
+                <p><strong>Stock:</strong> <span id="modal-product-stock"></span></p>
+                <p class="product-price" id="modal-product-price"></p>
                 <button id="add-to-cart-button" class="place-order-button">Add to Cart (COD)</button>
             </div>
         </div>
     </div>
 
-    <div id="order-modal" class="modal-overlay">
+    <div id="order-modal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
             <h3>Confirm Your Order (Cash on Delivery)</h3>
@@ -141,13 +114,13 @@
                     <label for="cod-address">Delivery Address:</label>
                     <textarea id="cod-address" required></textarea>
                 </div>
-                <button type="submit" id="confirm-cod-order" class="place-order-button">Confirm Order</button>
+                <button type="submit" id="confirm-cod-order" class="confirm-order-button">Confirm Order</button>
             </form>
         </div>
     </div>
 
-    <div id="rating-modal" class="modal-overlay">
-        <div class="modal-content">
+    <div id="rating-modal" class="modal">
+        <div class="modal-content rating-modal-content">
             <span class="close-button">&times;</span>
             <h3>Rate Your Product</h3>
             <p>How do you rate "<span id="rating-product-title"></span>" out of 7 stars?</p>
