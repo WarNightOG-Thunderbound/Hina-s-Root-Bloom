@@ -575,17 +575,20 @@ function listenForOrders() {
     const ordersRef = ref(database, 'orders');
     onValue(ordersRef, (snapshot) => {
         const data = snapshot.val() || {};
+        console.log("Raw orders data from Firebase:", data); // Log raw data
         allOrders = data; // Store all orders for analytics
         const pendingOrders = {};
         const completedOrders = {};
         for (const orderId in allOrders) {
             const order = { id: orderId, ...allOrders[orderId] }; // Add ID to the order object
-            if (order.status === 'Pending') {
+            // Make status comparison more robust to handle case and leading/trailing spaces
+            if (order.status && typeof order.status === 'string' && order.status.trim().toLowerCase() === 'pending') {
                 pendingOrders[orderId] = order;
-            } else if (order.status === 'Completed') {
+            } else if (order.status && typeof order.status === 'string' && order.status.trim().toLowerCase() === 'completed') {
                 completedOrders[orderId] = order;
             }
         }
+        console.log("Filtered pending orders (before display):", pendingOrders); // Log filtered pending orders
         displayPendingOrders(pendingOrders);
         displayCompletedOrders(completedOrders);
         updateDashboardCounts(Object.keys(allAdminProducts).length, Object.keys(pendingOrders).length, Object.keys(completedOrders).length);
@@ -598,6 +601,7 @@ function listenForOrders() {
 }
 
 function displayPendingOrders(orders) {
+    console.log("displayPendingOrders received orders for rendering:", orders); // Log orders received by display function
     orderListContainer.innerHTML = '';
     if (Object.keys(orders).length === 0) {
         orderListContainer.innerHTML = '<p class="no-items-message">No pending orders.</p>';
@@ -883,7 +887,7 @@ function updateWinnerOfTheWeek() {
         for (const orderId in allOrders) {
             const order = allOrders[orderId];
             const orderTimestamp = order.orderDate ? new Date(order.orderDate).getTime() : 0;
-            if (orderTimestamp >= cutoffDate && order.status === 'Completed') { // Only count completed orders
+            if (orderTimestamp >= cutoffDate && order.status && typeof order.status === 'string' && order.status.trim().toLowerCase() === 'completed') { // Only count completed orders
                 productOrdersCount[order.productId] = (productOrdersCount[order.productId] || 0) + order.quantity; // Sum quantities
             }
         }
