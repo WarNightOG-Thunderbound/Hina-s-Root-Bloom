@@ -162,12 +162,17 @@ function displayProducts(products) {
         productCard.className = 'product-card';
         productCard.dataset.productId = product.id;
 
-        const imageUrl = product.imageUrls && product.imageUrls[0] ? product.imageUrls[0] : 'https://placehold.co/400x300/E9ECEF/495057?text=No+Image'; // Default placeholder image
+        // Debugging image loading: Log the imageUrls
+        console.log(`Product: ${product.title}, Image URLs:`, product.imageUrls);
+        const imageUrl = product.imageUrls && Array.isArray(product.imageUrls) && product.imageUrls[0]
+                         ? product.imageUrls[0]
+                         : 'https://placehold.co/400x300/E9ECEF/495057?text=No+Image'; // Default placeholder image
+        
         const videoHtml = product.videoUrl ? `<div class="product-video-thumbnail"><i class="fas fa-video"></i></div>` : '';
 
         productCard.innerHTML = `
             <div class="product-image-container">
-                <img src="${imageUrl}" alt="${product.title}" class="product-image">
+                <img src="${imageUrl}" alt="${product.title}" class="product-image" onerror="this.onerror=null;this.src='https://placehold.co/400x300/E9ECEF/495057?text=Image+Error';">
                 ${videoHtml}
             </div>
             <h3 class="product-title">${product.title}</h3>
@@ -673,4 +678,3 @@ document.addEventListener('DOMContentLoaded', () => {
         touchEndX = e.changedTouches[0].screenX;
         handleGesture();
     });
-});
