@@ -13,16 +13,16 @@ const firebaseConfig = {
 // Initialize Firebase using the global firebase object
 const app = firebase.initializeApp(firebaseConfig);
 const analytics = firebase.analytics();
-const database = firebase.database();
+const database = firebase.database(); // Get the database service instance
 
-// Firebase function references (using the global firebase object)
+// Firebase function references (using the service instances)
 const ref = firebase.database.ref;
 const onValue = firebase.database.onValue;
 const push = firebase.database.push;
 const set = firebase.database.set;
 const get = firebase.database.get;
 const child = firebase.database.child;
-const update = firebase.database.update; // Added update for partial updates
+const update = firebase.database.update;
 const serverTimestamp = firebase.database.ServerValue.TIMESTAMP;
 
 // Global variables
@@ -32,7 +32,7 @@ const ratingModal = document.getElementById('rating-modal');
 const closeButtons = document.querySelectorAll('.close-button');
 const productContainer = document.getElementById('product-container');
 const categoryButtons = document.querySelectorAll('.category-button');
-const placeOrderButton = document.getElementById('add-to-cart-button'); // Corrected ID
+const placeOrderButton = document.getElementById('add-to-cart-button');
 const searchBar = document.getElementById('search-bar');
 const navLinks = document.querySelectorAll('.main-nav a');
 
@@ -228,7 +228,6 @@ closeButtons.forEach(button => {
         productModal.style.display = 'none';
         orderModal.style.display = 'none';
         ratingModal.style.display = 'none';
-        // No need to hide codForm explicitly here, it's inside orderModal
     });
 });
 
@@ -333,6 +332,7 @@ codForm.addEventListener('submit', async (e) => {
     }
 
     // Re-check stock just before placing order
+    // Correctly call ref on the database object and get
     const productRef = ref(database, 'products/' + currentProduct.id);
     const productSnapshot = await get(productRef);
     const productData = productSnapshot.val();
@@ -348,11 +348,14 @@ codForm.addEventListener('submit', async (e) => {
     try {
         // Decrement product stock
         const newStock = productData.stock - 1;
-        await update(productRef, { stock: newStock }); // Use update for partial change
+        // Correctly call update on a database ref
+        await update(productRef, { stock: newStock });
 
         // Record the order
+        // Correctly call push on a database ref
         const newOrderRef = push(ref(database, 'orders'));
         currentOrderId = newOrderRef.key; // Store for potential rating
+        // Correctly call set on a database ref
         await set(newOrderRef, {
             id: currentOrderId,
             productId: currentProduct.id,
@@ -439,6 +442,7 @@ submitRatingButton.addEventListener('click', async () => {
 
     try {
         // Update product's total stars and number of ratings
+        // Correctly call ref on the database object and get
         const productRef = ref(database, 'products/' + currentProduct.id);
         const snapshot = await get(productRef);
         const productData = snapshot.val();
@@ -450,14 +454,17 @@ submitRatingButton.addEventListener('click', async () => {
             const newNumberOfRatings = oldNumberOfRatings + 1;
             const newAverageRating = (newTotalStarsSum / newNumberOfRatings); // Calculate as number
 
-            await update(productRef, { // Use update for partial change
+            // Correctly call update on a database ref
+            await update(productRef, {
                 totalStarsSum: newTotalStarsSum,
                 numberOfRatings: newNumberOfRatings,
                 averageRating: parseFloat(newAverageRating.toFixed(2)) // Store as number for sorting/calculations
             });
 
             // Record the individual rating
+            // Correctly call push on a database ref
             const newRatingRef = push(ref(database, 'ratings'));
+            // Correctly call set on a database ref
             await set(newRatingRef, {
                 id: newRatingRef.key,
                 productId: currentProduct.id,
@@ -482,6 +489,7 @@ submitRatingButton.addEventListener('click', async () => {
 
 // --- Firebase Product Data Listener ---
 document.addEventListener('DOMContentLoaded', () => {
+    // Correctly call ref on the database object and onValue
     const productsRef = ref(database, 'products');
     onValue(productsRef, (snapshot) => {
         allProducts = {};
