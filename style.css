@@ -575,7 +575,7 @@ section {
 }
 
 .custom-modal-button.secondary:hover {
-    background-color: darken(var(--color-medium-gray), 10%);
+    background-color: #5a6268; /* Darken on hover */
 }
 
 /* Order History Section */
@@ -677,7 +677,6 @@ section {
     .filter-sort-section {
         flex-direction: column;
         align-items: stretch;
-        /* Keep display flex for mobile, but adjust layout */
     }
 
     .category-filters {
