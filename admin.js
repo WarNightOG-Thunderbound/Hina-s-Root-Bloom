@@ -602,6 +602,10 @@ function listenForOrders() {
 
 function displayPendingOrders(orders) {
     console.log("displayPendingOrders received orders for rendering:", orders); // Log orders received by display function
+    if (!orderListContainer) {
+        console.error("Error: orderListContainer element not found in the DOM.");
+        return; // Exit if container is not found
+    }
     orderListContainer.innerHTML = ''; // Clear previous content
 
     if (Object.keys(orders).length === 0) {
@@ -609,29 +613,73 @@ function displayPendingOrders(orders) {
         return;
     }
 
-    // --- TEMPORARY SIMPLIFIED RENDERING FOR DEBUGGING ---
-    Object.values(orders).forEach(order => {
-        const product = allAdminProducts[order.productId] || { title: 'Unknown Product', price: 0 };
-        console.log(`Rendering order ${order.id.substring(0,6)}... Product:`, product); // Log product data for this order
+    const orderListHtml = Object.values(orders).map(order => {
+        // Ensure allAdminProducts is populated before trying to access product details
+        const product = allAdminProducts[order.productId];
+        if (!product) {
+            console.warn(`Product with ID ${order.productId} not found for order ${order.id}. Displaying as 'Unknown Product'.`);
+            // Provide a fallback product object if not found
+            return `
+                <div class="admin-order-item">
+                    <div class="order-details">
+                        <h4>Order ID: ${order.id.substring(0, 6)}...</h4>
+                        <p><strong>Product:</strong> Unknown Product (ID: ${order.productId ? order.productId.substring(0,6) + '...' : 'N/A'})</p>
+                        <p><strong>Quantity:</strong> ${order.quantity || 'N/A'}</p>
+                        <p><strong>Total Price:</strong> PKR ${order.totalPrice ? order.totalPrice.toLocaleString() : 'N/A'}</p>
+                        <p><strong>Customer:</strong> ${order.customerName || 'N/A'}</p>
+                        <p><strong>Address:</strong> ${order.customerAddress || 'N/A'}</p>
+                        <p><strong>Phone:</strong> ${order.customerPhone || 'N/A'}</p>
+                        <p><strong>Order Date:</strong> ${order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A'}</p>
+                    </div>
+                    <div class="order-actions">
+                        <button class="admin-button success complete-order-btn" data-id="${order.id}"><i class="fas fa-check-circle"></i> Mark Complete</button>
+                        <button class="admin-button danger delete-order-btn" data-id="${order.id}"><i class="fas fa-times-circle"></i> Delete</button>
+                    </div>
+                </div>
+            `;
+        }
 
-        const orderDiv = document.createElement('div');
-        orderDiv.className = 'admin-order-item-debug'; // Add a unique class for easy identification
-        orderDiv.style.border = '1px solid #ccc';
-        orderDiv.style.padding = '10px';
-        orderDiv.style.marginBottom = '10px';
-        orderDiv.innerHTML = `
-            <strong>Debug Order ID:</strong> ${order.id.substring(0, 6)}...<br>
-            <strong>Product:</strong> ${product.title}<br>
-            <strong>Quantity:</strong> ${order.quantity}<br>
-            <strong>Customer:</strong> ${order.customerName}<br>
-            <strong>Status:</strong> ${order.status}
+        console.log(`Rendering order ${order.id.substring(0,6)}... with Product:`, product); // Log product data for this order
+
+        return `
+            <div class="admin-order-item">
+                <div class="order-details">
+                    <h4>Order ID: ${order.id.substring(0, 6)}...</h4>
+                    <p><strong>Product:</strong> ${product.title}</p>
+                    <p><strong>Quantity:</strong> ${order.quantity}</p>
+                    <p><strong>Total Price:</strong> PKR ${(order.quantity * product.price).toLocaleString()}</p>
+                    <p><strong>Customer:</strong> ${order.customerName}</p>
+                    <p><strong>Address:</strong> ${order.customerAddress}</p>
+                    <p><strong>Phone:</strong> ${order.customerPhone}</p>
+                    <p><strong>Order Date:</strong> ${new Date(order.orderDate).toLocaleString()}</p>
+                </div>
+                <div class="order-actions">
+                    <button class="admin-button success complete-order-btn" data-id="${order.id}"><i class="fas fa-check-circle"></i> Mark Complete</button>
+                    <button class="admin-button danger delete-order-btn" data-id="${order.id}"><i class="fas fa-times-circle"></i> Delete</button>
+                </div>
+            </div>
         `;
-        orderListContainer.appendChild(orderDiv);
-    });
-    // --- END TEMPORARY SIMPLIFIED RENDERING ---
+    }).join('');
+    console.log("Generated orderListHtml:", orderListHtml); // Log the final HTML string
+    orderListContainer.innerHTML = orderListHtml;
 
-    // The original detailed HTML rendering logic is commented out/removed for this debug version.
-    // We will revert to it once we confirm basic rendering works.
+    // Attach event listeners after rendering
+    document.querySelectorAll('.complete-order-btn').forEach(button => {
+        button.addEventListener('click', async (e) => {
+            const confirmed = await showConfirm('Are you sure you want to mark this order as complete?', 'Confirm Completion');
+            if (confirmed) {
+                updateOrderStatus(e.target.dataset.id, 'Completed');
+            }
+        });
+    });
+    document.querySelectorAll('.delete-order-btn').forEach(button => {
+        button.addEventListener('click', async (e) => {
+            const confirmed = await showConfirm(`Are you sure you want to delete order ${e.target.dataset.id.substring(0, 6)}...? This action cannot be undone.`, 'Confirm Deletion', 'Delete', 'Cancel', 'danger');
+            if (confirmed) {
+                deleteOrder(e.target.dataset.id);
+            }
+        });
+    });
 }
 
 function displayCompletedOrders(orders) {
@@ -905,122 +953,6 @@ function updateWinnerOfTheWeek() {
         winnerRatingInfo.textContent = 'No data for selected timeframe.';
         winnerOrdersInfo.textContent = 'No data for selected timeframe.';
     }
-}
-
-function listenForRatings() {
-    const ratingsRef = ref(database, 'ratings');
-    onValue(ratingsRef, (snapshot) => {
-        allRatings = snapshot.val() || {};
-        refreshAnalytics(); // Update analytics when ratings change
-    }, (error) => {
-        console.error("Error listening for ratings:", error);
-        showAlert(`Error loading ratings: ${error.message}. Check console and Firebase rules.`, 'Data Error');
-    });
-}
-
-function populateProductSelects() {
-    let optionsHtml = '<option value="">Select a Product</option>';
-    for (const productId in allAdminProducts) {
-        optionsHtml += `<option value="${productId}">${allAdminProducts[productId].title}</option>`;
-    }
-    compareProduct1Select.innerHTML = optionsHtml;
-    compareProduct2Select.innerHTML = optionsHtml;
-}
-
-compareProductsBtn.addEventListener('click', () => {
-    const product1Id = compareProduct1Select.value;
-    const product2Id = compareProduct2Select.value;
-
-    if (!product1Id || !product2Id) {
-        showAlert('Please select two products to compare.', 'Comparison Error');
-        return;
-    }
-    if (product1Id === product2Id) {
-        showAlert('Please select two *different* products to compare.', 'Comparison Error');
-        return;
-    }
-
-    const product1 = allAdminProducts[product1Id];
-    const product2 = allAdminProducts[product2Id];
-
-    if (!product1 || !product2) {
-        showAlert('One or both selected products not found.', 'Comparison Error');
-        return;
-    }
-
-    drawProductComparisonChart(product1, product2);
-});
-
-function drawProductComparisonChart(product1, product2) {
-    if (productComparisonChart) {
-        productComparisonChart.destroy();
-    }
-
-    const labels = ['Price', 'Stock', 'Average Rating', 'Total Orders (Completed)'];
-    const product1Data = [
-        product1.price,
-        product1.stock,
-        product1.numberOfRatings > 0 ? (product1.totalStarsSum / product1.numberOfRatings).toFixed(2) : 0,
-        getOrdersForProductInTimeframe(product1.id, 'all') // Get all time orders
-    ];
-    const product2Data = [
-        product2.price,
-        product2.stock,
-        product2.numberOfRatings > 0 ? (product2.totalStarsSum / product2.numberOfRatings).toFixed(2) : 0,
-        getOrdersForProductInTimeframe(product2.id, 'all')
-    ];
-
-    productComparisonChart = new Chart(productComparisonChartCanvas, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: product1.title,
-                    data: product1Data,
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)', // Blue
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: product2.title,
-                    data: product2Data,
-                    backgroundColor: 'rgba(255, 99, 132, 0.6)', // Red
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y;
-                            }
-                            return label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Value'
-                    }
-                }
-            }
-        }
-    });
 }
 
 function getOrdersForProductInTimeframe(productId, timeframe) {
