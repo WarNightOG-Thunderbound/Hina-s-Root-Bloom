@@ -13,11 +13,11 @@ const firebaseConfig = {
 // Initialize Firebase using the global firebase object
 const app = firebase.initializeApp(firebaseConfig);
 const analytics = firebase.analytics();
-const auth = firebase.auth();
-const database = firebase.database();
-const storage = firebase.storage();
+const auth = firebase.auth(); // Get the auth service instance
+const database = firebase.database(); // Get the database service instance
+const storage = firebase.storage(); // Get the storage service instance
 
-// Firebase function references (using the global firebase object)
+// Firebase function references (using the service instances)
 const signInWithEmailAndPassword = firebase.auth.signInWithEmailAndPassword;
 const signOut = firebase.auth.signOut;
 const onAuthStateChanged = firebase.auth.onAuthStateChanged;
@@ -28,12 +28,12 @@ const set = firebase.database.set;
 const remove = firebase.database.remove;
 const get = firebase.database.get;
 const child = firebase.database.child;
-const update = firebase.database.update; // Added update for partial updates
+const update = firebase.database.update;
 const storageRef = firebase.storage.ref;
 const uploadBytes = firebase.storage.uploadBytes;
 const getDownloadURL = firebase.storage.getDownloadURL;
 const deleteObject = firebase.storage.deleteObject;
-const listAll = firebase.storage.listAll; // Added listAll for deleting product images
+const listAll = firebase.storage.listAll;
 const serverTimestamp = firebase.database.ServerValue.TIMESTAMP;
 
 // Admin UI Elements
@@ -259,6 +259,7 @@ adminLoginBtn.addEventListener('click', async () => {
     adminLoginBtn.disabled = true;
     adminLoginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
     try {
+        // Correctly call signInWithEmailAndPassword on the auth object
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         // UI update will be handled by onAuthStateChanged
     } catch (error) {
@@ -272,6 +273,7 @@ adminLoginBtn.addEventListener('click', async () => {
 
 adminLogoutBtn.addEventListener('click', async () => {
     try {
+        // Correctly call signOut on the auth object
         await signOut(auth);
         // UI will be updated by onAuthStateChanged listener
     } catch (error) {
@@ -280,6 +282,7 @@ adminLogoutBtn.addEventListener('click', async () => {
     }
 });
 
+// Correctly call onAuthStateChanged on the auth object
 onAuthStateChanged(auth, (user) => {
     const adminEmail = "warnightog.thunderbound@gmail.com"; // Set your admin email here
     if (user && user.email === adminEmail) {
@@ -313,8 +316,11 @@ async function uploadImage(file, productId) {
     if (!file) return null;
     // Create a specific folder for each product's images
     const fileName = `${Date.now()}_${file.name}`;
+    // Correctly call storageRef on the storage object
     const storageReference = storageRef(storage, `product_images/${productId}/${fileName}`);
+    // Correctly call uploadBytes
     const snapshot = await uploadBytes(storageReference, file);
+    // Correctly call getDownloadURL
     const downloadURL = await getDownloadURL(snapshot.ref);
     return downloadURL;
 }
@@ -361,6 +367,7 @@ addEditProductBtn.addEventListener('click', async () => {
     let currentProductId = id;
     if (!currentProductId) {
         // Generate a new ID for new product to use in storage path and database
+        // Correctly call push on a database ref
         const newProductRef = push(ref(database, 'products'));
         currentProductId = newProductRef.key;
     }
@@ -397,6 +404,7 @@ addEditProductBtn.addEventListener('click', async () => {
 
         if (id) {
             // If editing, use the existing ID and update only changed fields
+            // Correctly call update on a database ref
             await update(ref(database, 'products/' + id), productData);
             await showAlert('Product updated successfully!', 'Success');
         } else {
@@ -405,6 +413,7 @@ addEditProductBtn.addEventListener('click', async () => {
             productData.totalStarsSum = 0; // Initialize for new products
             productData.numberOfRatings = 0; // Initialize for new products
             productData.averageRating = "0.00"; // Initialize for new products
+            // Correctly call set on a database ref
             await set(ref(database, 'products/' + currentProductId), productData);
             await showAlert('Product added successfully!', 'Success');
         }
@@ -435,6 +444,7 @@ function clearProductForm() {
 }
 
 function listenForProducts() {
+    // Correctly call ref on the database object and onValue
     const productsRef = ref(database, 'products');
     onValue(productsRef, (snapshot) => {
         allAdminProducts = {};
@@ -564,6 +574,7 @@ async function deleteProduct(id) {
                 try {
                     // Get the path from the full URL
                     const imagePath = decodeURIComponent(imageUrl.split('/o/')[1].split('?')[0]);
+                    // Correctly call storageRef on the storage object and deleteObject
                     const imageRef = storageRef(storage, imagePath);
                     await deleteObject(imageRef);
                 } catch (imgError) {
@@ -573,6 +584,7 @@ async function deleteProduct(id) {
             });
             await Promise.all(imagesToDeletePromises);
         }
+        // Correctly call remove on a database ref
         await remove(ref(database, 'products/' + id));
         await showAlert('Product deleted successfully!', 'Success');
     } catch (error) {
@@ -583,6 +595,7 @@ async function deleteProduct(id) {
 
 // --- Firebase Order Operations ---
 function listenForOrders() {
+    // Correctly call ref on the database object and onValue
     const ordersRef = ref(database, 'orders');
     onValue(ordersRef, (snapshot) => {
         allOrders = {};
@@ -684,8 +697,8 @@ async function completeOrder(orderId) {
         return;
     }
     try {
+        // Correctly call ref on the database object and update
         const orderRef = ref(database, 'orders/' + orderId);
-        // Use update to only change specific fields
         await update(orderRef, { status: 'completed', completedDate: serverTimestamp() });
         await showAlert(`Order ...${orderId.substring(orderId.length - 6)} marked as completed and moved to history.`, 'Order Completed');
     } catch (error) {
@@ -700,7 +713,7 @@ async function cancelOrder(orderId) {
         return;
     }
     try {
-        // Use update to change status to cancelled and add completion timestamp
+        // Correctly call ref on the database object and update
         const orderRef = ref(database, 'orders/' + orderId);
         await update(orderRef, { status: 'cancelled', completedDate: serverTimestamp() });
         await showAlert(`Order ...${orderId.substring(orderId.length - 6)} cancelled and moved to history.`, 'Order Cancelled');
@@ -719,6 +732,7 @@ function updateDashboardCounts(totalProducts, pendingOrders, completedOrders) {
 
 // --- Firebase Analytics Operations ---
 function listenForRatings() {
+    // Correctly call ref on the database object and onValue
     const ratingsRef = ref(database, 'ratings');
     onValue(ratingsRef, (snapshot) => {
         allRatings = {};
