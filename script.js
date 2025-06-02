@@ -29,7 +29,7 @@ const storage = getStorage(app);
 const productListingsContainer = document.getElementById('product-listings');
 const searchInput = document.getElementById('search-input');
 const searchButton = document.getElementById('search-button');
-const categoryFilterButtons = document.querySelectorAll('.category-button');
+const categoryFilterButtons = document.querySelectorAll('.category-button'); // For desktop filter buttons
 const sortBySelect = document.getElementById('sort-by-select');
 const productModal = document.getElementById('product-modal');
 const closeModalButton = document.querySelector('.close-button');
@@ -52,6 +52,12 @@ const closeRatingModalBtn = document.querySelector('.close-rating-modal-button')
 const ratingProductTitle = document.getElementById('rating-product-title');
 const ratingStarsContainer = document.getElementById('rating-stars-container');
 const submitRatingButton = document.getElementById('submit-rating-button');
+
+// Category Sidebar Elements
+const categorySidebarToggle = document.getElementById('category-sidebar-toggle');
+const categorySidebar = document.getElementById('category-sidebar');
+const categorySidebarOverlay = document.getElementById('category-sidebar-overlay');
+const sidebarCategoryButtons = categorySidebar ? categorySidebar.querySelectorAll('.category-button') : []; // For sidebar buttons
 
 // Custom Alert/Confirm Elements
 const customAlertModal = document.getElementById('custom-alert-modal');
@@ -214,10 +220,19 @@ function filterAndSortProducts() {
     }
 
     // Apply category filter
-    const activeCategoryButton = document.querySelector('.category-button.active');
-    if (activeCategoryButton && activeCategoryButton.dataset.category !== 'all') {
-        const category = activeCategoryButton.dataset.category;
-        filteredProducts = filteredProducts.filter(product => product.category === category);
+    // Check both desktop and sidebar category buttons
+    let activeCategory = 'all';
+    const desktopActiveButton = document.querySelector('.filter-sort-section .category-button.active');
+    const sidebarActiveButton = document.querySelector('.category-sidebar .category-button.active');
+
+    if (desktopActiveButton) {
+        activeCategory = desktopActiveButton.dataset.category;
+    } else if (sidebarActiveButton) {
+        activeCategory = sidebarActiveButton.dataset.category;
+    }
+
+    if (activeCategory !== 'all') {
+        filteredProducts = filteredProducts.filter(product => product.category === activeCategory);
     }
 
     // Apply sort order
@@ -383,6 +398,7 @@ async function placeOrder() {
             id: product.id,
             title: product.title
         };
+        // Pass the event object to openRatingModal, even if it's a synthetic one
         openRatingModal({ currentTarget: { dataset: { productId: product.id, productTitle: product.title } } });
 
         loadProducts(); // Refresh product list to show updated stock
@@ -508,6 +524,29 @@ async function submitProductRating() {
     }
 }
 
+// --- Category Sidebar Logic ---
+let touchStartX = 0;
+let touchEndX = 0;
+
+function openCategorySidebar() {
+    categorySidebar.classList.add('open');
+    categorySidebarOverlay.style.display = 'block';
+}
+
+function closeCategorySidebar() {
+    categorySidebar.classList.remove('open');
+    categorySidebarOverlay.style.display = 'none';
+}
+
+function handleGesture() {
+    if (touchEndX < touchStartX - 50) { // Swiped left
+        closeCategorySidebar();
+    }
+    if (touchEndX > touchStartX + 50) { // Swiped right
+        openCategorySidebar();
+    }
+}
+
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     // Initial load of products
@@ -527,10 +566,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Event listeners for category filter buttons
+    // Event listeners for desktop category filter buttons
     categoryFilterButtons.forEach(button => {
         button.addEventListener('click', () => {
             categoryFilterButtons.forEach(btn => btn.classList.remove('active'));
+            // Ensure sidebar buttons are also deactivated
+            sidebarCategoryButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             filterAndSortProducts();
         });
@@ -599,5 +640,37 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target === ratingModal) {
             closeRatingModal();
         }
+    });
+
+    // --- Category Sidebar Event Listeners ---
+    if (categorySidebarToggle) {
+        categorySidebarToggle.addEventListener('click', openCategorySidebar);
+    }
+
+    if (categorySidebarOverlay) {
+        categorySidebarOverlay.addEventListener('click', closeCategorySidebar);
+    }
+
+    // Event listeners for sidebar category filter buttons
+    sidebarCategoryButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Deactivate desktop buttons
+            categoryFilterButtons.forEach(btn => btn.classList.remove('active'));
+            // Deactivate other sidebar buttons
+            sidebarCategoryButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active'); // Activate clicked sidebar button
+            filterAndSortProducts();
+            closeCategorySidebar(); // Close sidebar after selection
+        });
+    });
+
+    // Swipe gestures for opening/closing sidebar on mobile
+    document.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    });
+
+    document.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleGesture();
     });
 });
