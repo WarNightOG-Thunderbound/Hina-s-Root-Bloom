@@ -602,50 +602,36 @@ function listenForOrders() {
 
 function displayPendingOrders(orders) {
     console.log("displayPendingOrders received orders for rendering:", orders); // Log orders received by display function
-    orderListContainer.innerHTML = '';
+    orderListContainer.innerHTML = ''; // Clear previous content
+
     if (Object.keys(orders).length === 0) {
         orderListContainer.innerHTML = '<p class="no-items-message">No pending orders.</p>';
         return;
     }
-    const orderListHtml = Object.values(orders).map(order => {
-        const product = allAdminProducts[order.productId] || { title: 'Unknown Product', price: 0 };
-        return `
-            <div class="admin-order-item">
-                <div class="order-details">
-                    <h4>Order ID: ${order.id.substring(0, 6)}...</h4>
-                    <p><strong>Product:</strong> ${product.title}</p>
-                    <p><strong>Quantity:</strong> ${order.quantity}</p>
-                    <p><strong>Total Price:</strong> PKR ${(order.quantity * product.price).toLocaleString()}</p>
-                    <p><strong>Customer:</strong> ${order.customerName}</p>
-                    <p><strong>Address:</strong> ${order.customerAddress}</p>
-                    <p><strong>Phone:</strong> ${order.customerPhone}</p>
-                    <p><strong>Order Date:</strong> ${new Date(order.orderDate).toLocaleString()}</p>
-                </div>
-                <div class="order-actions">
-                    <button class="admin-button success complete-order-btn" data-id="${order.id}"><i class="fas fa-check-circle"></i> Mark Complete</button>
-                    <button class="admin-button danger delete-order-btn" data-id="${order.id}"><i class="fas fa-times-circle"></i> Delete</button>
-                </div>
-            </div>
-        `;
-    }).join('');
-    orderListContainer.innerHTML = orderListHtml;
 
-    document.querySelectorAll('.complete-order-btn').forEach(button => {
-        button.addEventListener('click', async (e) => {
-            const confirmed = await showConfirm('Are you sure you want to mark this order as complete?', 'Confirm Completion');
-            if (confirmed) {
-                updateOrderStatus(e.target.dataset.id, 'Completed');
-            }
-        });
+    // --- TEMPORARY SIMPLIFIED RENDERING FOR DEBUGGING ---
+    Object.values(orders).forEach(order => {
+        const product = allAdminProducts[order.productId] || { title: 'Unknown Product', price: 0 };
+        console.log(`Rendering order ${order.id.substring(0,6)}... Product:`, product); // Log product data for this order
+
+        const orderDiv = document.createElement('div');
+        orderDiv.className = 'admin-order-item-debug'; // Add a unique class for easy identification
+        orderDiv.style.border = '1px solid #ccc';
+        orderDiv.style.padding = '10px';
+        orderDiv.style.marginBottom = '10px';
+        orderDiv.innerHTML = `
+            <strong>Debug Order ID:</strong> ${order.id.substring(0, 6)}...<br>
+            <strong>Product:</strong> ${product.title}<br>
+            <strong>Quantity:</strong> ${order.quantity}<br>
+            <strong>Customer:</strong> ${order.customerName}<br>
+            <strong>Status:</strong> ${order.status}
+        `;
+        orderListContainer.appendChild(orderDiv);
     });
-    document.querySelectorAll('.delete-order-btn').forEach(button => {
-        button.addEventListener('click', async (e) => {
-            const confirmed = await showConfirm(`Are you sure you want to delete order ${e.target.dataset.id.substring(0, 6)}...? This action cannot be undone.`, 'Confirm Deletion', 'Delete', 'Cancel', 'danger');
-            if (confirmed) {
-                deleteOrder(e.target.dataset.id);
-            }
-        });
-    });
+    // --- END TEMPORARY SIMPLIFIED RENDERING ---
+
+    // The original detailed HTML rendering logic is commented out/removed for this debug version.
+    // We will revert to it once we confirm basic rendering works.
 }
 
 function displayCompletedOrders(orders) {
