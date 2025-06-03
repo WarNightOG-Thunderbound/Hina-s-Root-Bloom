@@ -14,7 +14,7 @@ const firebaseConfig = {
   projectId: "hina-s-rootandbloomstore",
   storageBucket: "hina-s-rootandbloomstore.firebasestorage.app",
   messagingSenderId: "967448486557",
-  appId: "1:967448486557:web:2c89283921f6479010495f",
+  appId: "1:967448486557:web:2c89223921f6479010495f", // Corrected the App ID from previous response, ensuring it matches the original snippet
   measurementId: "G-CM67R2L60J"
 };
 
@@ -282,33 +282,41 @@ function getStarRatingHtml(averageRating) {
 }
 
 function populateCategoryFilters(allProducts) {
-    const categories = new Set(['all']); // Start with 'all'
+    const categoriesFromFirebase = new Set();
     allProducts.forEach(product => {
         if (product.category) {
-            categories.add(product.category);
+            categoriesFromFirebase.add(product.category);
         }
     });
 
-    categoryFiltersContainer.innerHTML = ''; // Clear existing buttons
-    categories.forEach(category => {
-        const button = document.createElement('button');
-        button.classList.add('category-button');
-        if (category === 'all') {
-            button.classList.add('active');
+    // Get existing hardcoded categories
+    const existingButtons = Array.from(categoryFiltersContainer.children);
+    const existingCategories = new Set(existingButtons.map(btn => btn.dataset.category));
+
+    // Add new categories from Firebase that are not already present
+    categoriesFromFirebase.forEach(category => {
+        if (!existingCategories.has(category)) {
+            const button = document.createElement('button');
+            button.classList.add('category-button');
+            button.dataset.category = category;
+            button.textContent = category.charAt(0).toUpperCase() + category.slice(1); // Capitalize
+            categoryFiltersContainer.appendChild(button);
         }
-        button.dataset.category = category;
-        button.textContent = category.charAt(0).toUpperCase() + category.slice(1); // Capitalize
-        categoryFiltersContainer.appendChild(button);
     });
 
+    // Re-attach event listeners to ALL category buttons (both hardcoded and dynamically added)
     document.querySelectorAll('.category-button').forEach(button => {
-        button.addEventListener('click', (event) => {
-            document.querySelectorAll('.category-button').forEach(btn => btn.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            filterAndSortProducts();
-        });
+        button.removeEventListener('click', handleCategoryFilterClick); // Prevent duplicate listeners
+        button.addEventListener('click', handleCategoryFilterClick);
     });
 }
+
+function handleCategoryFilterClick(event) {
+    document.querySelectorAll('.category-button').forEach(btn => btn.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    filterAndSortProducts();
+}
+
 
 function filterAndSortProducts() {
     const searchQuery = searchInput.value.toLowerCase();
@@ -358,8 +366,18 @@ function showProductDetail(productId) {
         const averageRating = currentProduct.ratings ? calculateAverageRating(currentProduct.ratings) : 0;
         modalProductRating.innerHTML = `${getStarRatingHtml(averageRating)} (${currentProduct.ratings ? Object.keys(currentProduct.ratings).length : 0} reviews) <button class="button secondary" id="rate-product-btn">Rate this product</button>`;
 
-        // Show/Hide order form
+        // Show/Hide order form and reset button for "Place Order"
         orderFormSection.style.display = 'none'; // Hide by default when opening modal
+        placeOrderBtn.textContent = 'Place Order'; // Reset button text
+        // Ensure only one event listener for placeOrderBtn to open the form
+        placeOrderBtn.removeEventListener('click', confirmOrder); // Remove confirm handler if present
+        placeOrderBtn.addEventListener('click', placeOrder); // Add or re-add initial placeOrder handler
+        // Clear order form fields
+        orderNameInput.value = '';
+        orderAddressInput.value = '';
+        orderEmailInput.value = '';
+        orderPhoneInput.value = '';
+
 
         productDetailModal.classList.add('active');
         document.body.classList.add('no-scroll'); // Add no-scroll class
@@ -382,6 +400,10 @@ function closeProductDetailModal() {
     orderAddressInput.value = '';
     orderEmailInput.value = '';
     orderPhoneInput.value = '';
+    // Reset the place order button text and listener
+    placeOrderBtn.textContent = 'Place Order';
+    placeOrderBtn.removeEventListener('click', confirmOrder); // Ensure old listener is removed
+    placeOrderBtn.addEventListener('click', placeOrder); // Re-add initial listener
 }
 
 // --- Cart Functionality ---
@@ -516,8 +538,9 @@ function placeOrder() {
     orderFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     // Change "Place Order" button to "Confirm Order" or similar, or handle via a new button
     placeOrderBtn.textContent = 'Confirm Order';
-    placeOrderBtn.removeEventListener('click', placeOrder); // Remove old listener
-    placeOrderBtn.addEventListener('click', confirmOrder); // Add new listener for confirmation
+    // IMPORTANT: Remove the current 'placeOrder' listener and add 'confirmOrder' listener
+    placeOrderBtn.removeEventListener('click', placeOrder);
+    placeOrderBtn.addEventListener('click', confirmOrder);
 }
 
 async function confirmOrder() {
@@ -563,15 +586,7 @@ async function confirmOrder() {
         showAlert('Order Placed!', 'Your order has been placed successfully. Thank you for your purchase!');
         showOrderConfirmationModal(); // Show order confirmation modal
         closeProductDetailModal(); // Close the product detail modal
-        // Clear order form fields
-        orderNameInput.value = '';
-        orderAddressInput.value = '';
-        orderEmailInput.value = '';
-        orderPhoneInput.value = '';
-        // Reset the place order button text and listener
-        placeOrderBtn.textContent = 'Place Order';
-        placeOrderBtn.removeEventListener('click', confirmOrder);
-        placeOrderBtn.addEventListener('click', placeOrder);
+        // Clear order form fields and reset button state are now handled by closeProductDetailModal
 
     } catch (error) {
         showAlert('Order Failed', `There was an error placing your order: ${error.message}`);
@@ -587,45 +602,62 @@ async function handleCheckout() {
     }
 
     const user = auth.currentUser;
+    // If you want to force login for checkout, uncomment this block
+    /*
     if (!user) {
         showAlert('Login Required', 'Please login or sign up to place an order.');
         displaySection('auth-section');
         return;
     }
+    */
 
-    // For simplicity, directly place orders for all items in cart.
-    // In a real app, you might want a multi-step checkout with address form etc.
-    // Here, we'll simulate individual orders for each item if there's no overall order form.
-    // If you want a single order with multiple items, the 'orders' structure in Firebase
-    // needs to support an array of items, and the admin app needs to parse it.
+    // This simplified checkout will combine all cart items into a single order.
+    // In a real application, you'd likely present a checkout form for address, etc.
+    // For now, we'll just simulate a multi-item order.
+    
+    const itemsInOrder = Object.values(cart).map(item => ({
+        productId: item.id,
+        productTitle: item.title,
+        productPrice: item.price,
+        productImageUrl: item.imageUrl,
+        quantity: item.quantity,
+        subTotal: item.price * item.quantity
+    }));
 
-    // For now, let's just make it clear that a direct "checkout" button for cart
-    // would also require customer details. Let's make checkout similar to single product order.
-    // For a full cart checkout, you'd show a form to collect user details for the whole cart.
+    // For a full cart checkout, you'd need a separate modal or page
+    // to collect customer details for the entire order, similar to the single product order form.
+    // As per the request, the detailed form is on 'Place Order' for individual products.
+    // For 'Checkout', we'll make a generic assumption or use a placeholder for customer data if no form.
+    // If user is logged in, use their email. Otherwise, a placeholder.
+    const customerEmailForCheckout = user ? user.email : "guest@example.com";
+    const customerNameForCheckout = user ? user.email : "Guest User"; // Placeholder
+    const customerAddressForCheckout = "N/A (Full checkout form not implemented)"; // Placeholder
+    const customerPhoneForCheckout = "N/A"; // Placeholder
 
-    // Let's assume for now that checkout leads to a generic "order placed" for all cart items.
-    // If a full checkout form is needed, it would be a new modal/section.
-    // For this request, we'll keep the cart checkout simple and assume user details are collected
-    // if a similar form like the single product order form is added to the cart section.
 
-    // If "checkout" implies placing all items as one order, you would need to:
-    // 1. Open a new modal/section for checkout details (name, address, email, phone for the whole order)
-    // 2. Collect those details.
-    // 3. Construct a single order object containing an array of cart items.
-    // 4. Push this single order to Firebase.
+    const orderDetails = {
+        items: itemsInOrder,
+        totalAmount: parseFloat(cartTotalSpan.textContent),
+        customerName: customerNameForCheckout,
+        customerAddress: customerAddressForCheckout,
+        customerEmail: customerEmailForCheckout,
+        customerPhone: customerPhoneForCheckout,
+        orderDate: serverTimestamp(),
+        status: 'Pending'
+    };
 
-    // Since the request was specifically about the "Place Order" button on product detail,
-    // I'll adjust checkout behavior to use the existing "placeOrder" logic or a similar approach.
-    // Given the current structure, a cart checkout implies a single transaction for all items.
-
-    // Let's present a simple alert for cart checkout for now.
-    // To implement full cart checkout with a form, it would be a larger task.
-    // For the scope of this request, the 'placeOrder' feature is for individual products.
-    showAlert('Checkout Initiated', 'Proceeding to checkout for all items in your cart. (Further development needed for a full checkout form)');
-    // If you want to empty cart after "checkout initiation", add:
-    // cart = {};
-    // saveCart();
-    // renderCart();
+    try {
+        const newOrderRef = push(ref(database, 'orders'));
+        await set(newOrderRef, orderDetails);
+        showAlert('Checkout Complete!', 'Your cart items have been ordered. Thank you for your purchase!');
+        cart = {}; // Clear cart after successful checkout
+        saveCart();
+        renderCart(); // Update cart display
+        displaySection('product-listing-section'); // Redirect to product list
+    } catch (error) {
+        showAlert('Checkout Failed', `There was an error processing your checkout: ${error.message}`);
+        console.error("Checkout error:", error);
+    }
 }
 
 // --- Order History ---
@@ -640,31 +672,60 @@ function loadOrderHistory() {
     onValue(ordersRef, (snapshot) => {
         orderHistoryList.innerHTML = ''; // Clear previous history
         let hasOrders = false;
+        const ordersArray = [];
         snapshot.forEach((childSnapshot) => {
             const order = childSnapshot.val();
             // Filter orders by the currently logged-in user's email
-            // (assuming email is used as a unique identifier for customer orders)
             if (order.customerEmail && order.customerEmail === user.email) {
-                hasOrders = true;
-                const orderItemDiv = document.createElement('div');
-                orderItemDiv.classList.add('order-item');
-
-                const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
-
-                orderItemDiv.innerHTML = `
-                    <h4>Order ID: ${childSnapshot.key}</h4>
-                    <p><strong>Product:</strong> ${order.productTitle}</p>
-                    <p><strong>Quantity:</strong> ${order.quantity}</p>
-                    <p><strong>Total:</strong> PKR ${order.totalAmount ? order.totalAmount.toFixed(2) : 'N/A'}</p>
-                    <p><strong>Order Date:</strong> ${orderDate}</p>
-                    <p><strong>Status:</strong> <span class="order-status">${order.status}</span></p>
-                    <p><strong>Customer:</strong> ${order.customerName}</p>
-                    <p><strong>Address:</strong> ${order.customerAddress}</p>
-                    <p><strong>Email:</strong> ${order.customerEmail}</p>
-                    <p><strong>Phone:</strong> ${order.customerPhone}</p>
-                `;
-                orderHistoryList.prepend(orderItemDiv); // Add latest order at the top
+                ordersArray.push({ id: childSnapshot.key, ...order });
             }
+        });
+
+        if (ordersArray.length === 0) {
+            orderHistoryList.innerHTML = '<p>You have not placed any orders yet.</p>';
+            return;
+        }
+
+        // Sort orders by date, newest first
+        ordersArray.sort((a, b) => {
+            const dateA = a.orderDate ? (a.orderDate.timestamp || a.orderDate) : 0;
+            const dateB = b.orderDate ? (b.orderDate.timestamp || b.orderDate) : 0;
+            return dateB - dateA;
+        });
+
+        ordersArray.forEach(order => {
+            hasOrders = true;
+            const orderItemDiv = document.createElement('div');
+            orderItemDiv.classList.add('order-item');
+
+            const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
+
+            let productInfoHtml = '';
+            // Check if it's a single product order or a multi-item cart order
+            if (order.productId) { // Single product order structure
+                productInfoHtml = `<p><strong>Product:</strong> ${order.productTitle}</p>
+                                   <p><strong>Quantity:</strong> ${order.quantity}</p>
+                                   <p><strong>Total:</strong> PKR ${order.totalAmount ? order.totalAmount.toFixed(2) : 'N/A'}</p>`;
+            } else if (order.items && Array.isArray(order.items)) { // Multi-item cart order structure
+                productInfoHtml = '<p><strong>Items:</strong></p><ul>';
+                order.items.forEach(item => {
+                    productInfoHtml += `<li>${item.productTitle} (x${item.quantity}) - PKR ${item.subTotal.toFixed(2)}</li>`;
+                });
+                productInfoHtml += `</ul><p><strong>Total Order Amount:</strong> PKR ${order.totalAmount ? order.totalAmount.toFixed(2) : 'N/A'}</p>`;
+            }
+
+
+            orderItemDiv.innerHTML = `
+                <h4>Order ID: ${order.id}</h4>
+                ${productInfoHtml}
+                <p><strong>Order Date:</strong> ${orderDate}</p>
+                <p><strong>Status:</strong> <span class="order-status">${order.status}</span></p>
+                <p><strong>Customer:</strong> ${order.customerName}</p>
+                <p><strong>Address:</strong> ${order.customerAddress}</p>
+                <p><strong>Email:</strong> ${order.customerEmail}</p>
+                <p><strong>Phone:</strong> ${order.customerPhone}</p>
+            `;
+            orderHistoryList.appendChild(orderItemDiv); // Append in order
         });
         if (!hasOrders) {
             orderHistoryList.innerHTML = '<p>You have not placed any orders yet.</p>';
@@ -746,23 +807,23 @@ function showAlert(title, message) {
     customModalTitle.textContent = title;
     customModalMessage.textContent = message;
     customAlertModal.classList.add('active');
-    document.body.classList.add('no-scroll');
+    document.body.classList.add('no-scroll'); // Add no-scroll to body for alert
 }
 
 function closeAlertModal() {
     customAlertModal.classList.remove('active');
-    document.body.classList.remove('no-scroll');
+    document.body.classList.remove('no-scroll'); // Remove no-scroll from body after alert
 }
 
 // --- Order Confirmation Modal ---
 function showOrderConfirmationModal() {
     orderConfirmationModal.classList.add('active');
-    document.body.classList.add('no-scroll');
+    document.body.classList.add('no-scroll'); // Add no-scroll to body for confirmation
 }
 
 function closeOrderConfirmationModal() {
     orderConfirmationModal.classList.remove('active');
-    document.body.classList.remove('no-scroll');
+    document.body.classList.remove('no-scroll'); // Remove no-scroll from body after confirmation
 }
 
 
@@ -797,6 +858,13 @@ document.addEventListener('DOMContentLoaded', () => {
     searchButton.addEventListener('click', filterAndSortProducts);
     searchInput.addEventListener('input', filterAndSortProducts); // Live search
     sortSelect.addEventListener('change', filterAndSortProducts);
+
+    // Initial attachment of category filter click handlers (for hardcoded buttons)
+    // This will be re-attached/updated by populateCategoryFilters for all buttons
+    document.querySelectorAll('.category-button').forEach(button => {
+        button.addEventListener('click', handleCategoryFilterClick);
+    });
+
 
     // Cart
     checkoutBtn.addEventListener('click', handleCheckout);
@@ -840,6 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Custom Alert Modal
     customModalOkBtn.addEventListener('click', closeAlertModal);
+    // Allow closing by clicking outside the alert modal
     window.addEventListener('click', (event) => {
         if (event.target === customAlertModal) {
             closeAlertModal();
@@ -848,6 +917,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Order Confirmation Modal
     orderConfirmationOkBtn.addEventListener('click', closeOrderConfirmationModal);
+    // Allow closing by clicking outside the confirmation modal
     window.addEventListener('click', (event) => {
         if (event.target === orderConfirmationModal) {
             closeOrderConfirmationModal();
