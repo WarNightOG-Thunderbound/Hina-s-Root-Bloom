@@ -470,6 +470,7 @@
             cursor: pointer;
             font-weight: 600;
             transition: background-color 0.3s ease, transform 0.2s ease;
+            text-align: center;
         }
 
         .custom-modal-button.primary {
@@ -694,7 +695,8 @@
                 <div class="form-group">
                     <label for="product-category">Category:</label>
                     <select id="product-category" required>
-                        </select>
+                        <!-- Categories will be dynamically loaded here -->
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="product-price">Price:</label>
@@ -731,7 +733,8 @@
                             </tr>
                         </thead>
                         <tbody id="products-table-body">
-                            </tbody>
+                            <!-- Products will be loaded here -->
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -751,7 +754,8 @@
                         </tr>
                     </thead>
                     <tbody id="orders-table-body">
-                        </tbody>
+                        <!-- Orders will be loaded here -->
+                    </tbody>
                 </table>
             </section>
 
@@ -776,7 +780,8 @@
                             </tr>
                         </thead>
                         <tbody id="categories-table-body">
-                            </tbody>
+                            <!-- Categories will be loaded here -->
+                        </tbody>
                     </table>
                 </div>
             </section>
@@ -792,7 +797,8 @@
                         </tr>
                     </thead>
                     <tbody id="users-table-body">
-                        </tbody>
+                        <!-- Users will be loaded here -->
+                    </tbody>
                 </table>
             </section>
 
@@ -801,18 +807,24 @@
                 <div class="comparison-inputs">
                     <select id="compare-product-1">
                         <option value="">Select Product 1</option>
-                        </select>
+                        <!-- Products will be dynamically loaded -->
+                    </select>
                     <select id="compare-product-2">
                         <option value="">Select Product 2</option>
-                        </select>
+                        <!-- Products will be dynamically loaded -->
+                    </select>
                     <button id="compare-products-btn" class="admin-button primary">Compare</button>
                 </div>
                 <div class="comparison-results" id="comparison-results">
-                    </div>
+                    <!-- Comparison results will be displayed here -->
+                </div>
             </section>
 
         </main>
-    </div> <div id="order-details-modal" class="modal-overlay">
+    </div> <!-- End of admin-content -->
+
+    <!-- Order Details Modal -->
+    <div id="order-details-modal" class="modal-overlay">
         <div class="modal-content">
             <span class="close-button" id="close-order-details-modal-btn">&times;</span>
             <h4>Order Details</h4>
@@ -837,6 +849,7 @@
         </div>
     </div>
 
+    <!-- Custom Alert/Login Modal for Admin -->
     <div id="custom-alert-modal" class="custom-modal-overlay">
         <div class="custom-modal-content">
             <h4 id="custom-modal-title">Authentication Required</h4>
