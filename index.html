@@ -29,120 +29,142 @@
             <h1 class="app-title"><i class="fas fa-leaf app-icon"></i> Hina's Root & Bloom</h1>
             <nav class="main-nav">
                 <ul>
-                    <li><a href="#" id="home-link"><i class="fas fa-home"></i> Home</a></li>
-                    <li><a href="#" id="admin-login-link"><i class="fas fa-user-shield"></i> Admin Login</a></li>
+                    <li><a href="#home-section"><i class="fas fa-home"></i> Home</a></li>
+                    <li><a href="#product-listing-section"><i class="fas fa-box"></i> Products</a></li>
+                    <li><a href="#about-section"><i class="fas fa-info-circle"></i> About</a></li>
+                    <li><a href="#contact-section"><i class="fas fa-envelope"></i> Contact</a></li>
+                    <li id="auth-link-container"><a href="#auth-section" id="auth-link"><i class="fas fa-user"></i> Login/Register</a></li>
+                    <li id="dashboard-link-container" style="display: none;"><a href="admin.html" id="dashboard-link"><i class="fas fa-chart-line"></i> Admin Dashboard</a></li>
                 </ul>
             </nav>
         </div>
     </header>
 
     <main class="app-main">
-        <section id="admin-login-section" class="auth-section" style="display: none;">
-            <h2>Admin Login</h2>
-            <div class="auth-form-container">
-                <input type="email" id="admin-email" placeholder="Admin Email" required>
-                <input type="password" id="admin-password" placeholder="Admin Password" required>
-                <button id="admin-login-btn" class="button primary"><i class="fas fa-sign-in-alt"></i> Login</button>
-                <p id="admin-login-error" class="error-message"></p>
+        <section id="home-section" class="hero-section">
+            <div class="hero-content">
+                <h2>Welcome to Hina's Root & Bloom</h2>
+                <p>Discover high-quality, organic, and unique products for a better you and a better home.</p>
+                <button id="explore-products-btn" class="button primary">Explore Products</button>
             </div>
         </section>
 
+        <section id="auth-section" class="auth-section">
+            <div id="auth-form-container" class="auth-form-container">
+                <h2>Login / Register</h2>
+                <input type="email" id="auth-email" placeholder="Email" required>
+                <input type="password" id="auth-password" placeholder="Password" required>
+                <p id="auth-error" class="error-message"></p>
+                <button id="login-button" class="button primary">Login</button>
+                <button id="register-button" class="button secondary">Register</button>
+                <button id="google-login-button" class="button secondary" style="margin-top: 10px;"><i class="fab fa-google"></i> Login with Google</button>
+                <button id="logout-button" class="button error" style="display: none; margin-top: 10px;">Logout</button>
+            </div>
+            <div id="welcome-message" style="display: none; margin-top: 20px;">
+                <h2>Welcome, <span id="user-display-name"></span>!</h2>
+                <button id="user-logout-button" class="button error">Logout</button>
+            </div>
+        </section>
+
+
         <section id="product-listing-section">
+            <h2>Our Products</h2>
+
             <div class="filter-sort-section">
                 <div class="search-bar">
-                    <input type="text" id="product-search" placeholder="Search products...">
-                    <button id="search-button" class="button secondary"><i class="fas fa-search"></i> Search</button>
+                    <input type="text" id="search-input" placeholder="Search products...">
+                    <button id="search-button" class="button secondary"><i class="fas fa-search"></i></button>
                 </div>
                 <div class="sort-by">
-                    <label for="sort-select">Sort by:</label>
+                    <label for="sort-select">Sort By:</label>
                     <select id="sort-select">
                         <option value="default">Default</option>
                         <option value="price-asc">Price: Low to High</option>
                         <option value="price-desc">Price: High to Low</option>
-                        <option value="name-asc">Name: A-Z</option>
-                        <option value="name-desc">Name: Z-A</option>
                         <option value="rating-desc">Rating: High to Low</option>
                     </select>
                 </div>
             </div>
-            
-            <div class="category-filters" id="category-filters">
+
+            <div class="category-filter">
+                <button class="category-button active" data-category="all">All</button>
                 </div>
 
             <div id="product-grid" class="product-grid">
                 </div>
         </section>
-    </main>
 
-    <div id="product-detail-modal" class="modal-overlay">
-        <div class="modal-content product-detail-content">
-            <span class="close-button" id="close-detail-modal-btn">&times;</span>
-            <div class="modal-body">
+        <div id="product-detail-modal" class="modal-overlay">
+            <div class="modal-content">
+                <span class="close-button" id="close-modal-btn">&times;</span>
+                <h3 id="modal-product-title">Product Title</h3>
                 <div class="modal-product-image-container">
                     <img id="modal-product-image" src="" alt="Product Image">
                 </div>
-                <div id="modal-product-video" class="modal-product-video-container" style="display: none;">
-                    </div>
-                <h3 id="modal-product-title"></h3>
-                <p class="modal-product-price" id="modal-product-price"></p>
-                <p class="modal-product-category" id="modal-product-category"></p>
-                <div class="modal-product-description" id="modal-product-description-scroller">
-                    <p id="modal-product-description"></p>
+                <div id="modal-product-video" style="display: none;">
+                    <h4>Product Video</h4>
+                    <iframe id="modal-product-video-iframe" frameborder="0" allowfullscreen></iframe>
                 </div>
-                <div class="modal-product-rating" id="modal-product-rating">
-                    </div>
-                <button id="place-order-detail-btn" class="button primary"><i class="fas fa-shopping-bag"></i> Place Order</button>
+                <p id="modal-product-description"></p>
+                <p class="modal-product-price">Price: $<span id="modal-product-price"></span></p>
+                <p class="modal-product-category">Category: <span id="modal-product-category"></span></p>
+                <div class="modal-product-rating">
+                    Average Rating: <span id="modal-average-rating-display">N/A</span> (<span id="modal-total-reviews">0</span> reviews)
+                </div>
+                <button id="add-to-cart-button" class="button primary"><i class="fas fa-cart-plus"></i> Add to Cart</button>
+                <button id="rate-product-button" class="button secondary"><i class="fas fa-star"></i> Rate Product</button>
             </div>
         </div>
-    </div>
 
-    <div id="order-form-modal" class="modal-overlay">
-        <div class="modal-content">
-            <span class="close-button" id="close-order-form-modal-btn">&times;</span>
-            <h3>Place Your Order</h3>
-            <div class="form-group">
-                <label for="order-address">Delivery Address:</label>
-                <textarea id="order-address" rows="4" placeholder="Enter your full delivery address" required></textarea>
+        <div id="rating-modal" class="custom-modal-overlay">
+            <div class="custom-modal-content">
+                <span class="close-button" id="close-rating-modal-btn">&times;</span>
+                <h4>Rate this product: <span id="rating-product-title"></span></h4>
+                <div class="rating-stars" id="rating-stars-container">
+                    <i class="far fa-star" data-rating="1"></i>
+                    <i class="far fa-star" data-rating="2"></i>
+                    <i class="far fa-star" data-rating="3"></i>
+                    <i class="far fa-star" data-rating="4"></i>
+                    <i class="far fa-star" data-rating="5"></i>
+                </div>
+                <p id="rating-error" class="error-message"></p>
+                <button id="submit-rating-button" class="button primary">Submit Rating</button>
             </div>
-            <div class="form-group">
-                <label for="order-phone">Phone Number:</label>
-                <input type="tel" id="order-phone" placeholder="Enter your phone number" required>
-            </div>
-            <button id="submit-order-btn" class="button primary">Confirm Order</button>
         </div>
-    </div>
 
-    <div id="rating-modal" class="modal-overlay">
-        <div class="modal-content">
-            <span class="close-button" id="close-rating-modal-btn">&times;</span>
-            <h4>Rate this product: <span id="rating-product-title"></span></h4>
-            <div class="rating-stars" id="rating-stars-container">
-                <i class="far fa-star" data-rating="1"></i>
-                <i class="far fa-star" data-rating="2"></i>
-                <i class="far fa-star" data-rating="3"></i>
-                <i class="far fa-star" data-rating="4"></i>
-                <i class="far fa-star" data-rating="5"></i>
+        <div id="custom-alert-modal" class="custom-modal-overlay">
+            <div class="custom-modal-content">
+                <h4 id="custom-modal-title"></h4>
+                <p id="custom-modal-message"></p>
+                <div class="custom-modal-buttons">
+                    <button id="custom-modal-ok-btn" class="custom-modal-button primary">OK</button>
+                    <button id="custom-modal-cancel-btn" class="custom-modal-button secondary" style="display:none;">Cancel</button>
+                </div>
             </div>
-            <p id="rating-error" class="error-message"></p>
-            <button id="submit-rating-button" class="button primary">Submit Rating</button>
         </div>
-    </div>
 
-    <div id="custom-alert-modal" class="custom-modal-overlay">
-        <div class="custom-modal-content">
-            <h4 id="custom-modal-title"></h4>
-            <p id="custom-modal-message"></p>
-            <div class="custom-modal-buttons">
-                <button id="custom-modal-ok-btn" class="custom-modal-button primary">OK</button>
-                <button id="custom-modal-cancel-btn" class="custom-modal-button secondary" style="display:none;">Cancel</button>
+        <section id="about-section">
+            <h2>About Hina's Root & Bloom</h2>
+            <p>Hina's Root & Bloom is your premier online destination for high-quality, organic, and unique products. We believe in offering items that enrich your life and align with sustainable values. Our carefully curated collection spans various categories, ensuring you find something special for every need.</p>
+            <p>Our mission is to provide exceptional products while fostering a community that values quality, transparency, and ethical sourcing. We are committed to bringing you the best, from the root of creation to the full bloom of satisfaction.</p>
+        </section>
+
+        <section id="contact-section">
+            <h2>Contact Us</h2>
+            <p>Have questions, feedback, or just want to say hello? We'd love to hear from you!</p>
+            <p>You can reach us via email at: <a href="mailto:support@hinasrootandbloom.com">support@hinasrootandbloom.com</a></p>
+            <p>Follow us on social media for updates and new arrivals:</p>
+            <div class="social-links">
+                <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <footer class="app-footer">
         <p>Developed by WarNightOG/HassanJaved</p>
         <p>Project of ThunderBound</p>
-        <p>Organized by ThunderBound</p>
     </footer>
 
     <script type="module" src="script.js"></script>
