@@ -87,10 +87,10 @@ function showCustomAlert(title, message, isConfirm = false) {
             phoneInput.value = '';   // Clear previous input
         }
 
-        customAlertModal.style.display = 'flex';
+        customAlertModal.classList.add('active'); // Use class for animation
 
         const handleOk = () => {
-            customAlertModal.style.display = 'none';
+            customAlertModal.classList.remove('active');
             customModalOkBtn.removeEventListener('click', handleOk);
             customModalCancelBtn.removeEventListener('click', handleCancel);
             if (title === 'Place Order') {
@@ -101,7 +101,7 @@ function showCustomAlert(title, message, isConfirm = false) {
         };
 
         const handleCancel = () => {
-            customAlertModal.style.display = 'none';
+            customAlertModal.classList.remove('active');
             customModalOkBtn.removeEventListener('click', handleOk);
             customModalCancelBtn.removeEventListener('click', handleCancel);
             resolve(false);
@@ -403,11 +403,11 @@ async function submitProductRating() {
 function openRatingModal() {
     selectedRating = 0; // Reset selected rating
     updateRatingStars(); // Update stars to reflect reset
-    ratingModal.style.display = 'flex';
+    ratingModal.classList.add('active'); // Use class for animation
 }
 
 function closeRatingModal() {
-    ratingModal.style.display = 'none';
+    ratingModal.classList.remove('active');
 }
 
 
@@ -422,8 +422,9 @@ window.addEventListener('click', (event) => {
         productDetailsModal.style.display = 'none';
         modalProductVideo.querySelector('iframe').src = ''; // Stop video playback
     }
+    // Only close if it's the overlay and not the modal content itself
     if (event.target === customAlertModal) {
-        customAlertModal.style.display = 'none';
+        customAlertModal.classList.remove('active');
     }
 });
 
