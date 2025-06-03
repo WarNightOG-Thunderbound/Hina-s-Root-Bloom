@@ -42,7 +42,7 @@ body {
 
 /* No-scroll class for body when modal is open */
 body.no-scroll {
-    overflow: hidden; /* This prevents background scrolling */
+    overflow: hidden; /* This prevents background scrolling of the body */
 }
 
 a {
@@ -732,6 +732,12 @@ textarea {
     margin-bottom: 20px;
 }
 
+.modal-product-rating .button { /* Style for the 'Rate this product' button within rating */
+    margin-left: 10px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+}
+
 .modal-product-actions {
     display: flex;
     justify-content: center;
@@ -786,6 +792,10 @@ textarea {
 }
 
 /* Custom Alert/Confirmation Modal */
+.custom-modal-overlay {
+    background-color: rgba(0, 0, 0, 0.7); /* Ensure dark background */
+}
+
 .custom-modal-content {
     text-align: center;
 }
