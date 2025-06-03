@@ -15,146 +15,154 @@
 
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/index.html"> <meta property="og:title" content="Hina's Root & Bloom - Your Online Store for Quality and Organic Products">
-    <meta property="og:description" content="Discover Hina's Root & Bloom - your online store for high-quality, organic, and unique products. Explore our collection of fabric, perfumes, tools, electronics, clothing, books, home & kitchen, beauty, toys, sports, and other brands.">
-    <meta property="og:image" content="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/THI.PNG"> <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/index.html"> <meta name="twitter:title" content="Hina's Root & Bloom - Your Online Store for Quality and Organic Products">
+    <meta property="og:description" content="Discover Hina's Root & Bloom - your online store for high-quality, organic, and unique products. Explore our collection of fabric...">
+    <meta property="og:image" content="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/Hina%E2%80%99s%20Root&Bloom.png">
+    <meta property="og:image:alt" content="Hina's Root & Bloom Logo">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/index.html">
+    <meta name="twitter:title" content="Hina's Root & Bloom - Your Online Store for Quality and Organic Products">
     <meta name="twitter:description" content="Discover Hina's Root & Bloom - your online store for high-quality, organic, and unique products. Explore our collection of fabric, perfumes, tools, electronics, clothing, books, home & kitchen, beauty, toys, sports, and other brands.">
-    <meta name="twitter:image" content="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/THI.PNG"> <title>Hina's-Root&Bloom.store</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="twitter:image" content="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/Hina%E2%80%99s%20Root&Bloom.png">
+
+    <title>Hina's Root & Bloom - Your Online Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7327094289132114"
-     crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <h1>Hina's-Root&Bloom.store</h1>
-        <nav class="main-nav">
-            <ul>
-                <li><a href="#history-section">Our History</a></li>
-                <li><a href="#about-us-section">About Us</a></li>
-                <li><a href="#contact-us-section">Contact Us</a></li>
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo-title">
+                <img src="Hina’s Root&Bloom.png" alt="Hina's Root & Bloom Logo" class="app-logo">
+                <h1>Hina's Root & Bloom</h1>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="#products"><i class="fas fa-box-open"></i> Products</a></li>
+                    <li><a href="#categories"><i class="fas fa-tags"></i> Categories</a></li>
+                    <li><a href="#" id="cart-icon"><i class="fas fa-shopping-cart"></i> Cart (<span id="cart-count">0</span>)</a></li>
+                    <li class="auth-section">
+                        <button id="login-btn" class="nav-button"><i class="fas fa-sign-in-alt"></i> Login</button>
+                        <button id="logout-btn" class="nav-button" style="display: none;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                        <span id="user-display" style="display: none;"></span>
+                    </li>
                 </ul>
-        </nav>
+            </nav>
+        </div>
     </header>
 
-    <main>
-        <section class="search-section">
-            <h2>Search Products</h2>
-            <input type="text" id="search-input" class="search-input" placeholder="Search by name or description...">
-            <button id="search-button" class="admin-button primary"><i class="fas fa-search"></i> Search</button>
+    <main class="app-content">
+        <section id="auth-section" class="auth-card">
+            <h2>Login / Sign Up</h2>
+            <input type="email" id="auth-email" placeholder="Email">
+            <input type="password" id="auth-password" placeholder="Password">
+            <button id="login-submit-btn" class="button primary">Login</button>
+            <p>Don't have an account? <button id="signup-toggle-btn" class="button link-button">Sign Up</button></p>
         </section>
 
-        <section class="filter-sort-section">
-            <div class="category-filters">
-                <button class="category-button active" data-category="all">All</button>
-                <button class="category-button" data-category="Fabric">Fabric</button>
-                <button class="category-button" data-category="Organic">Organic</button>
-                <button class="category-button" data-category="Other Brands">Other Brands</button>
-                <button class="category-button" data-category="Other Products">Other Products</button>
-                <button class="category-button" data-category="Perfumes">Perfumes</button>
-                <button class="category-button" data-category="Tools">Tools</button>
-                <button class="category-button" data-category="electronics">Electronics</button>
-                <button class="category-button" data-category="clothing">Clothing</button>
-                <button class="category-button" data-category="books">Books</button>
-                <button class="category-button" data-category="home">Home & Kitchen</option>
-                <button class="category-button" data-category="beauty">Beauty</button>
-                <button class="category-button" data-category="toys">Toys</button>
-                <button class="category-button" data-category="sports">Sports</button>
+        <section id="product-listing-section" style="display: none;">
+            <div class="filter-sort-section">
+                <div class="search-bar">
+                    <input type="text" id="product-search" placeholder="Search products...">
+                </div>
+                <div class="category-filters">
+                    <button class="category-button active" data-category="all">All</button>
+                    </div>
+                <div class="sort-by">
+                    <label for="sort-select">Sort by:</label>
+                    <select id="sort-select">
+                        <option value="default">Default</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="price-desc">Price: High to Low</option>
+                        <option value="name-asc">Name: A-Z</option>
+                        <option value="name-desc">Name: Z-A</option>
+                    </select>
+                </div>
             </div>
-            <div class="sort-by">
-                <label for="sort-by-select">Sort By:</label>
-                <select id="sort-by-select">
-                    <option value="default">Default</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                    <option value="alpha-asc">Name: A-Z</option>
-                    <option value="alpha-desc">Name: Z-A</option>
-                    <option value="featured">Featured</option>
-                </select>
-            </div>
+            <div id="product-grid" class="product-grid">
+                </div>
         </section>
 
-        <section class="product-listings-section">
-            <h2>All Products</h2>
-            <div id="product-listings" class="product-grid">
-                <p class="loading-message">Loading products...</p>
-            </div>
+        <section id="order-history-section" style="display: none;">
+            <h2>Your Order History</h2>
+            <div id="order-history-list">
+                </div>
         </section>
-
-        <section id="history-section" class="info-section history-section">
-            <h2>Our History</h2>
-            <p>SHJR.shop started its journey in **2017**, aiming to provide quality products to our valued customers. We have consistently grown by focusing on customer satisfaction and expanding our range of unique and high-quality items. Our commitment is to bring the best to your doorstep.</p>
-        </section>
-
-        <section id="about-us-section" class="info-section about-us-section">
-            <h2>About Us</h2>
-            <p>Welcome to SHJR.shop! We are passionate about bringing you a curated selection of fine fabrics, organic goods, and products from other distinctive brands. Our mission is to offer high-quality items that enhance your lifestyle, combined with a seamless online shopping experience. We believe in quality, transparency, and customer delight.</p>
-        </section>
-
-        <section id="contact-us-section" class="info-section contact-us-section">
-            <h2>Contact Us</h2>
-            <p>**Email:** <a href="mailto:khalidja2010@gmail.com">khalidja2010@gmail.com</a></p>
-            <p>**Phone:** <a href="tel:03344148636">0334-4148636</a>, <a href="tel:03356566933">0335-6566933</a></p>
-            <p>**Address:**C block PASCO society Canal road lahore Pakistan.</p>
-            </section>
-
-        <section id="support-iframe-section" class="info-section support-iframe-section">
-            <h2>Support App</h2>
-            <p>Here you can access our dedicated support application:</p>
-            <iframe src="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/" class="support-app-iframe-embed"></iframe>
-        </section>
-
-        <section id="order-history-section" class="order-history-section" style="display: none;">
-            <h2>Order History</h2>
-            <div id="order-history-list" class="order-history-list">
-                <p>No past orders found.</p>
-            </div>
-        </section>
-        <button id="toggle-order-history-btn" class="admin-button secondary">Show Order History</button>
+        <button id="toggle-order-history-btn" class="button secondary" style="display: none;">Show Order History</button>
     </main>
 
-    <div id="product-modal" class="modal-overlay" style="display: none;">
+    <div id="product-modal" class="modal-overlay">
         <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <div class="modal-product-image-container">
-                <img id="modal-product-image" src="" alt="Product Image">
-                <div id="modal-product-video" style="display: none;"></div>
+            <button class="close-button" id="close-modal-btn"><i class="fas fa-times"></i></button>
+            <div class="modal-product-header">
+                <div class="modal-product-image-container">
+                    <img id="modal-product-image" src="" alt="Product Image">
+                </div>
+                <h3 id="modal-product-title"></h3>
             </div>
-            <h3 id="modal-product-title"></h3>
-            <p id="modal-product-price"></p>
-            <p id="modal-product-description"></p>
-            <p id="modal-product-brand"></p>
-            <p id="modal-product-category"></p>
-            <p id="modal-product-stock"></p>
-            <div class="product-quantity-selector">
-                <label for="product-quantity">Quantity:</label>
-                <input type="number" id="product-quantity" value="1" min="1">
+            <div class="modal-product-details">
+                <p class="modal-price">Price: <span id="modal-product-price"></span></p>
+                <p id="modal-product-description"></p>
+                <p>Category: <span id="modal-product-category"></span></p>
+                <p>Availability: <span id="modal-product-availability"></span></p>
+                <p>Rating: <span id="modal-product-rating"></span> (<span id="modal-product-rating-count"></span> reviews)</p>
+                <div id="modal-product-video" style="display: none;">
+                    <h4>Product Video:</h4>
+                    <iframe></iframe>
+                </div>
+                <div class="modal-actions">
+                    <div class="quantity-control">
+                        <button id="decrease-quantity">-</button>
+                        <input type="number" id="product-quantity" value="1" min="1">
+                        <button id="increase-quantity">+</button>
+                    </div>
+                    <button id="add-to-cart-modal-btn" class="button primary"><i class="fas fa-cart-plus"></i> Add to Cart</button>
+                </div>
+                <button id="rate-product-btn" class="button secondary mt-3" style="display: none;"><i class="fas fa-star"></i> Rate this Product</button>
             </div>
-            <button id="add-to-cart-button" class="admin-button success"><i class="fas fa-cart-plus"></i> Add to Cart</button>
-            <button id="place-order-button" class="admin-button primary"><i class="fas fa-truck"></i> Place Order</button>
         </div>
     </div>
 
-    <div id="rating-modal" class="modal-overlay" style="display: none;">
+    <div id="cart-modal" class="modal-overlay">
         <div class="modal-content">
-            <span class="close-rating-modal-button">&times;</span>
-            <h3>Rate this product</h3>
-            <p>How do you rate "<span id="rating-product-title"></span>" out of 7 stars?</p>
+            <button class="close-button" id="close-cart-modal-btn"><i class="fas fa-times"></i></button>
+            <h2>Your Cart</h2>
+            <div id="cart-items">
+                </div>
+            <div class="cart-summary">
+                <p>Total: <span id="cart-total">0.00</span> PKR</p>
+            </div>
+            <div class="customer-info-form">
+                <h3>Customer Information</h3>
+                <input type="text" id="customer-name" placeholder="Your Name" required>
+                <input type="tel" id="customer-phone" placeholder="Your Phone Number" required>
+                <textarea id="customer-address" placeholder="Your Delivery Address" rows="3" required></textarea>
+            </div>
+            <div class="cart-actions">
+                <button id="place-order-btn" class="button primary"><i class="fas fa-truck"></i> Place Order</button>
+                <button id="clear-cart-btn" class="button secondary"><i class="fas fa-trash-alt"></i> Clear Cart</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="rating-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-button" id="close-rating-modal-btn"><i class="fas fa-times"></i></button>
+            <h3>Rate Product: <span id="rating-product-title"></span></h3>
             <div class="rating-stars" id="rating-stars-container">
-                <i class="fa-solid fa-star" data-rating="1"></i>
-                <i class="fa-solid fa-star" data-rating="2"></i>
-                <i class="fa-solid fa-star" data-rating="3"></i>
-                <i class="fa-solid fa-star" data-rating="4"></i>
-                <i class="fa-solid fa-star" data-rating="5"></i>
-                <i class="fa-solid fa-star" data-rating="6"></i>
-                <i class="fa-solid fa-star" data-rating="7"></i>
+                <i class="far fa-star" data-rating="1"></i>
+                <i class="far fa-star" data-rating="2"></i>
+                <i class="far fa-star" data-rating="3"></i>
+                <i class="far fa-star" data-rating="4"></i>
+                <i class="far fa-star" data-rating="5"></i>
             </div>
-            <button id="submit-rating-button" class="admin-button primary">Submit Rating</button>
+            <textarea id="rating-review-text" placeholder="Write a review (optional)" rows="3"></textarea>
+            <button id="submit-rating-btn" class="button primary">Submit Rating</button>
         </div>
     </div>
 
-    <div id="custom-alert-modal" class="custom-modal-overlay" style="display: none;">
+    <div id="custom-alert-modal" class="custom-modal-overlay">
         <div class="custom-modal-content">
             <h4 id="custom-modal-title"></h4>
             <p id="custom-modal-message"></p>
@@ -164,33 +172,6 @@
             </div>
         </div>
     </div>
-
-    <!-- <button id="category-sidebar-toggle" class="category-sidebar-toggle">
-        <i class="fas fa-bars"></i>
-    </button>
-
-    <div id="category-sidebar-overlay" class="category-sidebar-overlay" style="display: none;"></div>
-
-    <div id="category-sidebar" class="category-sidebar">
-        <h3>Categories</h3>
-        <div class="category-filters">
-            <button class="category-button active" data-category="all">All</button>
-            <button class="category-button" data-category="Fabric">Fabric</button>
-            <button class="category-button" data-category="Organic">Organic</button>
-            <button class="category-button" data-category="Other Brands">Other Brands</button>
-            <button class="category-button" data-category="Other Products">Other Products</button>
-            <button class="category-button" data-category="Perfumes">Perfumes</button>
-            <button class="category-button" data-category="Tools">Tools</button>
-            <button class="category-button" data-category="electronics">Electronics</button>
-            <button class="category-button" data-category="clothing">Clothing</button>
-            <button class="category-button" data-category="books">Books</button>
-            <button class="category-button" data-category="home">Home & Kitchen</option>
-            <button class="category-button" data-category="beauty">Beauty</button>
-            <button class="category-button" data-category="toys">Toys</button>
-            <button class="category-button" data-category="sports">Sports</button>
-        </div>
-    </div> -->
-
 
     <footer class="app-footer">
         <p>Developed by WarNightOG/HassanJaved</p>
