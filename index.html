@@ -33,8 +33,6 @@
                     <li><a href="#product-listing-section"><i class="fas fa-box"></i> Products</a></li>
                     <li><a href="#about-section"><i class="fas fa-info-circle"></i> About</a></li>
                     <li><a href="#contact-section"><i class="fas fa-envelope"></i> Contact</a></li>
-                    <li id="auth-link-container"><a href="#auth-section" id="auth-link"><i class="fas fa-user"></i> Login/Register</a></li>
-                    <li id="dashboard-link-container" style="display: none;"><a href="admin.html" id="dashboard-link"><i class="fas fa-chart-line"></i> Admin Dashboard</a></li>
                 </ul>
             </nav>
         </div>
@@ -48,24 +46,6 @@
                 <button id="explore-products-btn" class="button primary">Explore Products</button>
             </div>
         </section>
-
-        <section id="auth-section" class="auth-section">
-            <div id="auth-form-container" class="auth-form-container">
-                <h2>Login / Register</h2>
-                <input type="email" id="auth-email" placeholder="Email" required>
-                <input type="password" id="auth-password" placeholder="Password" required>
-                <p id="auth-error" class="error-message"></p>
-                <button id="login-button" class="button primary">Login</button>
-                <button id="register-button" class="button secondary">Register</button>
-                <button id="google-login-button" class="button secondary" style="margin-top: 10px;"><i class="fab fa-google"></i> Login with Google</button>
-                <button id="logout-button" class="button error" style="display: none; margin-top: 10px;">Logout</button>
-            </div>
-            <div id="welcome-message" style="display: none; margin-top: 20px;">
-                <h2>Welcome, <span id="user-display-name"></span>!</h2>
-                <button id="user-logout-button" class="button error">Logout</button>
-            </div>
-        </section>
-
 
         <section id="product-listing-section">
             <h2>Our Products</h2>
@@ -111,24 +91,38 @@
                 <div class="modal-product-rating">
                     Average Rating: <span id="modal-average-rating-display">N/A</span> (<span id="modal-total-reviews">0</span> reviews)
                 </div>
-                <button id="add-to-cart-button" class="button primary"><i class="fas fa-cart-plus"></i> Add to Cart</button>
-                <button id="rate-product-button" class="button secondary"><i class="fas fa-star"></i> Rate Product</button>
+                <button id="place-order-button" class="button primary"><i class="fas fa-shopping-bag"></i> Place Order</button>
             </div>
         </div>
 
-        <div id="rating-modal" class="custom-modal-overlay">
+        <div id="place-order-modal" class="custom-modal-overlay">
             <div class="custom-modal-content">
-                <span class="close-button" id="close-rating-modal-btn">&times;</span>
-                <h4>Rate this product: <span id="rating-product-title"></span></h4>
-                <div class="rating-stars" id="rating-stars-container">
-                    <i class="far fa-star" data-rating="1"></i>
-                    <i class="far fa-star" data-rating="2"></i>
-                    <i class="far fa-star" data-rating="3"></i>
-                    <i class="far fa-star" data-rating="4"></i>
-                    <i class="far fa-star" data-rating="5"></i>
+                <span class="close-button" id="close-place-order-modal-btn">&times;</span>
+                <h4>Complete Your Order for <span id="order-product-title"></span></h4>
+                <input type="hidden" id="order-product-id">
+                <input type="hidden" id="order-product-price">
+                <input type="hidden" id="order-product-image-url">
+                <div class="form-group">
+                    <label for="customer-address">Delivery Address:</label>
+                    <textarea id="customer-address" rows="3" placeholder="Enter your full delivery address" required></textarea>
                 </div>
-                <p id="rating-error" class="error-message"></p>
-                <button id="submit-rating-button" class="button primary">Submit Rating</button>
+                <div class="form-group">
+                    <label for="customer-phone">Phone Number:</label>
+                    <input type="tel" id="customer-phone" placeholder="e.g., +923xxxxxxxxx" required>
+                </div>
+                <div class="form-group">
+                    <label>Rate this product (Optional):</label>
+                    <div class="rating-stars" id="order-rating-stars-container">
+                        <i class="far fa-star" data-rating="1"></i>
+                        <i class="far fa-star" data-rating="2"></i>
+                        <i class="far fa-star" data-rating="3"></i>
+                        <i class="far fa-star" data-rating="4"></i>
+                        <i class="far fa-star" data-rating="5"></i>
+                    </div>
+                    <p id="order-rating-error" class="error-message"></p>
+                </div>
+                <p id="order-form-message" class="error-message"></p>
+                <button id="submit-order-button" class="button primary">Submit Order</button>
             </div>
         </div>
 
