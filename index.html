@@ -34,21 +34,14 @@
                 <ul>
                     <li><a href="#products">Products</a></li>
                     <li><a href="#about">About</a></li>
-                    <!-- Removed Contact link as per request -->
-                    <li id="admin-link-container" style="display: none;"><a href="admin.html">Admin</a></li>
-                </ul>
+                    </ul>
             </nav>
             <div class="header-actions">
                 <div class="search-bar">
                     <input type="text" id="search-input" placeholder="Search products...">
                     <button id="search-button"><i class="fas fa-search"></i></button>
                 </div>
-                <div class="user-auth">
-                    <button id="login-button" class="action-button"><i class="fas fa-sign-in-alt"></i> Login</button>
-                    <button id="register-button" class="action-button"><i class="fas fa-user-plus"></i> Register</button>
-                    <button id="logout-button" class="action-button" style="display: none;"><i class="fas fa-sign-out-alt"></i> Logout</button>
                 </div>
-            </div>
         </div>
     </header>
 
@@ -57,10 +50,8 @@
             <h2>Our Products</h2>
             <div class="filter-sort-section">
                 <div class="category-filters" id="category-filters">
-                    <!-- Category buttons will be loaded here by JavaScript -->
                     <button class="category-button active" data-category="all">All</button>
-                    <!-- Example categories, dynamically loaded -->
-                </div>
+                    </div>
                 <div class="sort-by">
                     <label for="sort-select">Sort by:</label>
                     <select id="sort-select">
@@ -73,15 +64,13 @@
                 </div>
             </div>
             <div class="product-grid" id="product-list">
-                <!-- Products will be loaded here by JavaScript -->
-            </div>
+                </div>
         </section>
 
         <section id="order-history-section" style="display: none;">
             <h2>Your Order History</h2>
             <div id="order-history-list">
-                <!-- Order history will be loaded here -->
-            </div>
+                </div>
         </section>
 
         <section id="about" class="about-section">
@@ -92,10 +81,8 @@
             <p>Thank you for choosing Hina's Root&Bloom. Join us in cultivating a lifestyle that embraces quality, nature, and conscious living.</p>
         </section>
 
-        <!-- Removed Contact Section as per request -->
-    </main>
+        </main>
 
-    <!-- Product Details Modal -->
     <div id="product-details-modal" class="modal">
         <div class="modal-content">
             <span class="close-button" id="close-modal-btn">&times;</span>
@@ -118,7 +105,6 @@
         </div>
     </div>
 
-    <!-- Custom Alert Modal (for address and phone) -->
     <div id="custom-alert-modal" class="custom-modal-overlay">
         <div class="custom-modal-content">
             <h4 id="custom-modal-title"></h4>
@@ -134,7 +120,6 @@
         </div>
     </div>
 
-    <!-- Rating Modal -->
     <div id="rating-modal" class="custom-modal-overlay" style="display: none;">
         <div class="custom-modal-content">
             <span class="close-button" id="close-rating-modal-btn">&times;</span>
@@ -155,7 +140,6 @@
         <p>Project of ThunderBound</p>
         <p>Organized by ThunderBound</p>
         <p><a href="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/" target="_blank" class="footer-link">Support</a></p>
-        <button id="open-code-button" class="action-button" style="margin-top: 10px;">Open Code in Canvas</button>
     </footer>
 
     <script type="module" src="script.js"></script>
