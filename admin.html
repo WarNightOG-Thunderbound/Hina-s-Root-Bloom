@@ -7,7 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
-    <link rel="stylesheet" href="style.css"> </head>
+    <link rel="stylesheet" href="style.css"> <!-- Re-using general styles where applicable, or admin-specific styles -->
+</head>
 <body>
     <header class="app-header">
         <div class="header-content">
@@ -24,6 +25,7 @@
     </header>
 
     <main class="app-main">
+        <!-- Admin Login Section -->
         <section class="auth-section" id="admin-auth-section">
             <div class="auth-forms">
                 <div class="auth-form" id="admin-login-form">
@@ -31,15 +33,18 @@
                     <input type="email" id="admin-login-email" placeholder="Admin Email">
                     <input type="password" id="admin-login-password" placeholder="Admin Password">
                     <button id="admin-login-btn" class="button primary">Login</button>
+                    <p id="admin-error-message" style="color: var(--color-error-red); margin-top: 10px;"></p>
                 </div>
             </div>
         </section>
 
+        <!-- Admin Dashboard Section -->
         <section class="admin-dashboard-section" id="admin-dashboard-section" style="display: none;">
             <div class="admin-dashboard-tabs">
                 <button class="tab-button active" data-tab="products"><i class="fas fa-box"></i> Products</button>
                 <button class="tab-button" data-tab="orders"><i class="fas fa-clipboard-list"></i> Orders</button>
                 <button class="tab-button" data-tab="ratings"><i class="fas fa-star"></i> Ratings</button>
+                <button class="tab-button" data-tab="categories"><i class="fas fa-tags"></i> Categories</button>
                 <button class="tab-button" data-tab="analytics"><i class="fas fa-chart-pie"></i> Analytics</button>
                 <button class="tab-button" data-tab="support-iframe"><i class="fas fa-life-ring"></i> Support App</button>
             </div>
@@ -48,6 +53,7 @@
                 <h2>Product Management</h2>
                 <button id="add-product-btn" class="admin-button primary"><i class="fas fa-plus"></i> Add New Product</button>
 
+                <!-- Product Form (Add/Edit) Modal -->
                 <div class="modal-overlay" id="product-modal">
                     <div class="modal-content">
                         <span class="close-button" id="close-product-modal">&times;</span>
@@ -56,8 +62,12 @@
                         <input type="text" id="product-title" placeholder="Product Title" required>
                         <textarea id="product-description" placeholder="Product Description" required></textarea>
                         <input type="number" id="product-price" placeholder="Price" step="0.01" required>
-                        <input type="text" id="product-category" placeholder="Category" required>
+                        <input type="number" id="product-stock" placeholder="Stock Quantity" required>
                         <input type="text" id="product-brand" placeholder="Brand" required>
+                        <select id="product-category-select" required>
+                            <option value="">Select Category</option>
+                            <!-- Categories will be populated here by JavaScript -->
+                        </select>
                         <input type="url" id="product-image-url" placeholder="Image URL (direct link)">
                         <input type="url" id="product-video-url" placeholder="Video URL (YouTube/Vimeo embed link)">
                         <input type="file" id="product-image-upload" accept="image/*">
@@ -66,6 +76,22 @@
                     </div>
                 </div>
 
+                <!-- Product List -->
+                <div class="filter-sort-section">
+                    <input type="text" id="product-search-input" placeholder="Search products...">
+                    <select id="product-category-filter">
+                        <option value="all">All Categories</option>
+                        <!-- Categories will be populated here by JavaScript -->
+                    </select>
+                    <select id="product-sort-select">
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="price-asc">Price (Low to High)</option>
+                        <option value="price-desc">Price (High to Low)</option>
+                        <option value="stock-asc">Stock (Low to High)</option>
+                        <option value="stock-desc">Stock (High to Low)</option>
+                    </select>
+                </div>
                 <div class="table-container">
                     <table class="admin-table">
                         <thead>
@@ -74,17 +100,31 @@
                                 <th>Title</th>
                                 <th>Category</th>
                                 <th>Price</th>
+                                <th>Stock</th>
+                                <th>Rating</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="product-list">
-                            </tbody>
+                            <!-- Products will be loaded here by JavaScript -->
+                        </tbody>
                     </table>
                 </div>
             </div>
 
             <div id="orders-tab" class="tab-content">
                 <h2>Order Management</h2>
+                <div class="filter-sort-section">
+                    <input type="text" id="order-search-input" placeholder="Search orders...">
+                    <select id="order-status-filter">
+                        <option value="all">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Shipped">Shipped</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
                 <div class="table-container">
                     <table class="admin-table">
                         <thead>
@@ -98,7 +138,8 @@
                             </tr>
                         </thead>
                         <tbody id="order-list">
-                            </tbody>
+                            <!-- Orders will be loaded here by JavaScript -->
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -118,8 +159,34 @@
                             </tr>
                         </thead>
                         <tbody id="rating-list">
-                            </tbody>
+                            <!-- Ratings will be loaded here by JavaScript -->
+                        </tbody>
                     </table>
+                </div>
+            </div>
+
+            <div id="categories-tab" class="tab-content">
+                <h2>Category Management</h2>
+                <div class="admin-card">
+                    <h3>Add New Category</h3>
+                    <input type="text" id="category-name-input" placeholder="New Category Name" required>
+                    <button id="add-category-btn" class="admin-button primary"><i class="fas fa-plus"></i> Add Category</button>
+                </div>
+                <div class="admin-card" style="margin-top: 20px;">
+                    <h3>Manage Existing Categories</h3>
+                    <select id="manage-category-select">
+                        <option value="">Select Category to Manage</option>
+                        <!-- Categories will be populated here -->
+                    </select>
+                    <input type="text" id="edit-category-name-input" placeholder="Edit Category Name" disabled>
+                    <button id="update-category-btn" class="admin-button secondary" disabled><i class="fas fa-edit"></i> Update Name</button>
+                    <button id="delete-category-btn" class="admin-button danger" disabled><i class="fas fa-trash-alt"></i> Delete Category</button>
+                </div>
+                <div class="admin-card" style="margin-top: 20px;">
+                    <h3>All Categories List</h3>
+                    <ul id="category-list-display">
+                        <!-- Categories will be displayed here -->
+                    </ul>
                 </div>
             </div>
 
@@ -157,6 +224,7 @@
             <div id="support-iframe-tab" class="tab-content">
                 <h2>Support App</h2>
                 <div class="iframe-container">
+                    <!-- Ensure the iframe src is correct and authorized in Firebase OAuth settings -->
                     <iframe src="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/admin.html" title="SHJR Support App Admin"></iframe>
                 </div>
             </div>
@@ -164,6 +232,7 @@
         </section>
     </main>
 
+    <!-- Custom Alert/Confirm Modals -->
     <div id="custom-alert-modal" class="custom-modal-overlay">
         <div class="custom-modal-content">
             <h4 id="custom-modal-title"></h4>
