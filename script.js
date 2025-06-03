@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getDatabase, ref, push, set, remove, onValue, serverTimestamp, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
@@ -47,6 +47,7 @@ const orderHistoryList = document.getElementById('order-history-list');
 
 // Auth elements
 const loginButton = document.getElementById('login-button');
+const registerButton = document.getElementById('register-button'); // New register button
 const logoutButton = document.getElementById('logout-button');
 const adminLinkContainer = document.getElementById('admin-link-container');
 
@@ -58,12 +59,17 @@ const customModalOkBtn = document.getElementById('custom-modal-ok-btn');
 const customModalCancelBtn = document.getElementById('custom-modal-cancel-btn');
 const addressInput = document.getElementById('address-input');
 const phoneInput = document.getElementById('phone-input');
+const authEmailInput = document.getElementById('auth-email-input');       // New for auth modal
+const authPasswordInput = document.getElementById('auth-password-input'); // New for auth modal
 
 // Rating Modal Elements
 const ratingModal = document.getElementById('rating-modal');
 const closeRatingModalBtn = document.getElementById('close-rating-modal-btn');
 const ratingStarsContainer = document.getElementById('rating-stars-container');
 const submitRatingButton = document.getElementById('submit-rating-button');
+
+// Open Code Button
+const openCodeButton = document.getElementById('open-code-button');
 
 
 let allProducts = [];
@@ -72,29 +78,43 @@ let selectedRating = 0; // To store the selected rating
 
 // --- Utility Functions ---
 
-function showCustomAlert(title, message, isConfirm = false) {
+function showCustomAlert(title, message, isConfirm = false, showAuthInputs = false, showAddressPhone = false) {
     return new Promise((resolve) => {
         customModalTitle.textContent = title;
         customModalMessage.textContent = message;
-        addressInput.style.display = 'none'; // Hide by default
-        phoneInput.style.display = 'none';   // Hide by default
-        customModalCancelBtn.style.display = isConfirm ? 'block' : 'none';
+        
+        // Reset all input displays
+        addressInput.style.display = 'none';
+        phoneInput.style.display = 'none';
+        authEmailInput.style.display = 'none';
+        authPasswordInput.style.display = 'none';
 
-        if (title === 'Place Order') {
+        // Show inputs based on flags
+        if (showAddressPhone) {
             addressInput.style.display = 'block';
             phoneInput.style.display = 'block';
             addressInput.value = ''; // Clear previous input
             phoneInput.value = '';   // Clear previous input
         }
+        if (showAuthInputs) {
+            authEmailInput.style.display = 'block';
+            authPasswordInput.style.display = 'block';
+            authEmailInput.value = ''; // Clear previous input
+            authPasswordInput.value = ''; // Clear previous input
+        }
 
+        customModalCancelBtn.style.display = isConfirm ? 'block' : 'none';
         customAlertModal.classList.add('active'); // Use class for animation
 
         const handleOk = () => {
             customAlertModal.classList.remove('active');
             customModalOkBtn.removeEventListener('click', handleOk);
             customModalCancelBtn.removeEventListener('click', handleCancel);
-            if (title === 'Place Order') {
+
+            if (showAddressPhone) {
                 resolve({ address: addressInput.value, phone: phoneInput.value });
+            } else if (showAuthInputs) {
+                resolve({ email: authEmailInput.value, password: authPasswordInput.value });
             } else {
                 resolve(true);
             }
@@ -272,7 +292,6 @@ async function placeOrder() {
         return;
     }
 
-    const auth = getAuth();
     const user = auth.currentUser;
 
     if (!user) {
@@ -280,7 +299,7 @@ async function placeOrder() {
         return;
     }
 
-    const { address, phone } = await showCustomAlert('Place Order', 'Please enter your address and phone number:', true);
+    const { address, phone } = await showCustomAlert('Place Order', 'Please enter your address and phone number:', true, false, true);
 
     if (address && phone) {
         try {
@@ -310,7 +329,6 @@ async function placeOrder() {
 
 
 function loadOrderHistory() {
-    const auth = getAuth();
     const user = auth.currentUser;
 
     if (!user) {
@@ -374,7 +392,6 @@ async function submitProductRating() {
         return;
     }
 
-    const auth = getAuth();
     const user = auth.currentUser;
 
     if (!user) {
@@ -410,6 +427,75 @@ function closeRatingModal() {
     ratingModal.classList.remove('active');
 }
 
+
+// --- Authentication Functions ---
+async function handleLogin() {
+    const { email, password } = await showCustomAlert('Login', 'Please enter your email and password:', true, true);
+
+    if (email && password) {
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            showCustomAlert('Login Successful', `Welcome, ${user.email}!`);
+            if (user.email === 'Hina@admin.com' && password === 'School123&') {
+                // Admin login, directly navigate to admin.html
+                window.location.href = 'admin.html';
+            }
+            // onAuthStateChanged listener will handle UI updates for regular users
+        } catch (error) {
+            console.error("Login error:", error.code, error.message);
+            let errorMessage = "Failed to log in. Please check your credentials.";
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                errorMessage = "Invalid email or password.";
+            } else if (error.code === 'auth/invalid-email') {
+                errorMessage = "Invalid email format.";
+            }
+            showCustomAlert('Login Failed', errorMessage);
+        }
+    } else {
+        showCustomAlert('Login Cancelled', 'Email and password are required for login.');
+    }
+}
+
+async function handleRegister() {
+    const { email, password } = await showCustomAlert('Register', 'Please enter your email and a password (min 6 characters):', true, true);
+
+    if (email && password) {
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            showCustomAlert('Registration Successful', `Account created for ${user.email}! You are now logged in.`);
+            // onAuthStateChanged listener will handle UI updates
+        } catch (error) {
+            console.error("Registration error:", error.code, error.message);
+            let errorMessage = "Failed to register. Please try again.";
+            if (error.code === 'auth/email-already-in-use') {
+                errorMessage = "This email is already registered.";
+            } else if (error.code === 'auth/invalid-email') {
+                errorMessage = "Invalid email format.";
+            } else if (error.code === 'auth/weak-password') {
+                errorMessage = "Password should be at least 6 characters.";
+            }
+            showCustomAlert('Registration Failed', errorMessage);
+        }
+    } else {
+        showCustomAlert('Registration Cancelled', 'Email and password are required for registration.');
+    }
+}
+
+async function handleLogout() {
+    const confirmLogout = await showCustomAlert('Confirm Logout', 'Are you sure you want to log out?', true);
+    if (confirmLogout) {
+        try {
+            await signOut(auth);
+            showCustomAlert('Logged Out', 'You have been successfully logged out.');
+            // onAuthStateChanged listener will handle UI updates
+        } catch (error) {
+            console.error("Logout error:", error);
+            showCustomAlert('Error', 'Failed to log out. Please try again.');
+        }
+    }
+}
 
 // --- Event Listeners ---
 closeModalBtn.addEventListener('click', () => {
@@ -486,15 +572,33 @@ window.addEventListener('click', (event) => {
     }
 });
 
+// Auth button event listeners
+loginButton.addEventListener('click', handleLogin);
+registerButton.addEventListener('click', handleRegister);
+logoutButton.addEventListener('click', handleLogout);
+
+// Open Code in Canvas button
+openCodeButton.addEventListener('click', async () => {
+    const response = await fetch('index.html');
+    const htmlContent = await response.text();
+    // This will open a new immersive with the HTML content
+    // The actual mechanism for "opening a new canvas" is handled by the environment.
+    // For demonstration, I'm providing the content here.
+    console.log("HTML content for new canvas:", htmlContent);
+    // In a real Canvas environment, you would use a specific API to create a new immersive.
+    // Since I cannot directly trigger that, I'm logging it and providing it in the response.
+});
+
 
 // --- Authentication State Listener ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
         // User is signed in
         loginButton.style.display = 'none';
+        registerButton.style.display = 'none'; // Hide register button when logged in
         logoutButton.style.display = 'inline-block';
         // Check if the logged-in user is the admin
-        if (user.email === 'admin@hina.com') { // Replace with your actual admin email
+        if (user.email === 'Hina@admin.com') { // Use the specified admin email
             adminLinkContainer.style.display = 'list-item'; // Show admin link
         } else {
             adminLinkContainer.style.display = 'none'; // Hide admin link for regular users
@@ -504,6 +608,7 @@ onAuthStateChanged(auth, (user) => {
     } else {
         // User is signed out
         loginButton.style.display = 'inline-block';
+        registerButton.style.display = 'inline-block'; // Show register button when logged out
         logoutButton.style.display = 'none';
         adminLinkContainer.style.display = 'none'; // Always hide admin link if not logged in
         orderHistorySection.style.display = 'none'; // Hide order history
