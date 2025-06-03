@@ -271,13 +271,15 @@ function populateCategories() {
     onValue(categoriesRef, (snapshot) => {
         const categoriesData = snapshot.val();
         categoryFilters.innerHTML = '<button class="category-button active" data-category="all">All</button>'; // Reset
-        for (let categoryId in categoriesData) {
-            const categoryName = categoriesData[categoryId].name;
-            const button = document.createElement('button');
-            button.classList.add('category-button');
-            button.dataset.category = categoryName;
-            button.textContent = categoryName;
-            categoryFilters.appendChild(button);
+        if (categoriesData) {
+            for (let categoryId in categoriesData) {
+                const categoryName = categoriesData[categoryId].name;
+                const button = document.createElement('button');
+                button.classList.add('category-button');
+                button.dataset.category = categoryName;
+                button.textContent = categoryName;
+                categoryFilters.appendChild(button);
+            }
         }
     });
 }
@@ -583,6 +585,10 @@ window.addEventListener('click', (event) => {
     // Only close if it's the overlay and not the modal content itself
     if (event.target === customAlertModal) {
         customAlertModal.classList.remove('active');
+        // If it was a confirm dialog, resolve to false if clicked outside
+        // The showCustomAlert promise needs to be resolved here if it's a confirm dialog
+        // For simplicity, we'll let the promise resolve via its internal listeners.
+        // If the user clicks outside, it just closes the modal visually.
     }
 });
 
@@ -607,41 +613,49 @@ searchInput.addEventListener('keypress', (event) => {
 placeOrderButton.addEventListener('click', placeOrder);
 
 toggleOrderHistoryBtn.addEventListener('click', () => {
-    // Only toggle if user is logged in
-    if (auth.currentUser) {
-        if (orderHistorySection.style.display === 'block') {
-            orderHistorySection.style.display = 'none';
-            toggleOrderHistoryBtn.textContent = 'Show Order History';
-        } else {
-            loadOrderHistory(); // Load/refresh history when showing
-            orderHistorySection.style.display = 'block';
-            toggleOrderHistoryBtn.textContent = 'Hide Order History';
-        }
+    if (orderHistorySection.style.display === 'block') {
+        orderHistorySection.style.display = 'none';
+        toggleOrderHistoryBtn.textContent = 'Show Order History';
     } else {
-        showCustomAlert('Login Required', 'Please log in to view your order history.');
+        orderHistorySection.style.display = 'block';
+        toggleOrderHistoryBtn.textContent = 'Hide Order History';
+        loadOrderHistory(); // Load when shown
     }
 });
 
-// Event listener for rating stars
-ratingStarsContainer.addEventListener('click', (event) => {
-    const star = event.target.closest('.fa-star');
-    if (star) {
-        selectedRating = parseInt(star.dataset.rating);
-        updateRatingStars();
+
+// Rating star click handler
+if (ratingStarsContainer) {
+    ratingStarsContainer.addEventListener('click', (event) => {
+        const star = event.target.closest('.fa-star');
+        if (star) {
+            selectedRating = parseInt(star.dataset.rating);
+            updateRatingStars();
+        }
+    });
+}
+
+// Submit rating button
+if (submitRatingButton) {
+    submitRatingButton.addEventListener('click', submitProductRating);
+}
+
+// Close rating modal
+if (closeRatingModalBtn) {
+    closeRatingModalBtn.addEventListener('click', closeRatingModal);
+}
+window.addEventListener('click', (event) => {
+    if (event.target === ratingModal) {
+        closeRatingModal();
     }
 });
 
-submitRatingButton.addEventListener('click', submitProductRating);
-closeRatingModalBtn.addEventListener('click', closeRatingModal);
 
-
-// --- Authentication State Listener (for index.html) ---
+// --- Authentication State Listener ---
 onAuthStateChanged(auth, (user) => {
-    // This listener is primarily for showing/hiding order history and other user-specific elements
-    // Login/logout buttons are now handled dynamically via the custom modal for actions like placeOrder.
     if (user) {
-        // User is signed in. Load user-specific data like order history.
-        // The display of Order History section is controlled by toggleOrderHistoryBtn click.
+        // User is signed in
+        // The visibility of Order History section is controlled by toggleOrderHistoryBtn click.
         console.log("User logged in on public app:", user.email);
         loadOrderHistory(); // Pre-load data, but section visibility is user-controlled
     } else {
@@ -652,7 +666,9 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
+
 // --- Initial Load ---
 document.addEventListener('DOMContentLoaded', () => {
     loadProducts(); // Initial load of products
+    // Firebase auth state listener handles initial data loading based on user status
 });
