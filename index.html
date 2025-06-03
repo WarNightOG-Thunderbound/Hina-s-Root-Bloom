@@ -34,14 +34,16 @@
                 <ul>
                     <li><a href="#products">Products</a></li>
                     <li><a href="#about">About</a></li>
-                    </ul>
+                    <!-- Admin link removed from public app as per request -->
+                </ul>
             </nav>
             <div class="header-actions">
                 <div class="search-bar">
                     <input type="text" id="search-input" placeholder="Search products...">
                     <button id="search-button"><i class="fas fa-search"></i></button>
                 </div>
-                </div>
+                <!-- Login/Register/Logout buttons removed from public app as per request -->
+            </div>
         </div>
     </header>
 
@@ -50,8 +52,10 @@
             <h2>Our Products</h2>
             <div class="filter-sort-section">
                 <div class="category-filters" id="category-filters">
+                    <!-- Category buttons will be loaded here by JavaScript -->
                     <button class="category-button active" data-category="all">All</button>
-                    </div>
+                    <!-- Example categories, dynamically loaded -->
+                </div>
                 <div class="sort-by">
                     <label for="sort-select">Sort by:</label>
                     <select id="sort-select">
@@ -64,13 +68,15 @@
                 </div>
             </div>
             <div class="product-grid" id="product-list">
-                </div>
+                <!-- Products will be loaded here by JavaScript -->
+            </div>
         </section>
 
         <section id="order-history-section" style="display: none;">
             <h2>Your Order History</h2>
             <div id="order-history-list">
-                </div>
+                <!-- Order history will be loaded here -->
+            </div>
         </section>
 
         <section id="about" class="about-section">
@@ -81,8 +87,10 @@
             <p>Thank you for choosing Hina's Root&Bloom. Join us in cultivating a lifestyle that embraces quality, nature, and conscious living.</p>
         </section>
 
-        </main>
+        <!-- Removed Contact Section as per request -->
+    </main>
 
+    <!-- Product Details Modal -->
     <div id="product-details-modal" class="modal">
         <div class="modal-content">
             <span class="close-button" id="close-modal-btn">&times;</span>
@@ -105,6 +113,7 @@
         </div>
     </div>
 
+    <!-- Custom Alert Modal (for address, phone, and auth) -->
     <div id="custom-alert-modal" class="custom-modal-overlay">
         <div class="custom-modal-content">
             <h4 id="custom-modal-title"></h4>
@@ -120,6 +129,7 @@
         </div>
     </div>
 
+    <!-- Rating Modal -->
     <div id="rating-modal" class="custom-modal-overlay" style="display: none;">
         <div class="custom-modal-content">
             <span class="close-button" id="close-rating-modal-btn">&times;</span>
