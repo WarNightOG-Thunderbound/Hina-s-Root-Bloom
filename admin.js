@@ -155,19 +155,25 @@ function showCustomAlert(title, message, isConfirm = false, showAuthInputs = fal
 // --- Authentication Functions ---
 
 /**
- * Handles admin login.
+ * Handles admin login. This function is called when the admin page loads and no admin is authenticated,
+ * or when the login button in the admin login modal is clicked.
  */
 async function adminLogin() {
+    // Show the login modal and wait for user input
     const { email, password } = await showCustomAlert('Admin Login', 'Enter your admin credentials:', false, true);
 
+    // If user cancelled or provided empty credentials
     if (!email || !password) {
-        showCustomAlert('Login Failed', 'Email and password are required.');
-        // If credentials are not provided, re-prompt or redirect if access is critical
-        onAuthStateChanged(auth, (user) => {
-            if (!(user && user.email === 'Hina@admin.com')) {
-                 window.location.href = 'index.html'; // Redirect if still not admin
-            }
-        });
+        // If the modal was just opened (i.e., no previous attempt), don't show "Invalid credentials"
+        // Simply ensure the admin content is hidden and potentially redirect if they don't try to log in.
+        adminContent.style.display = 'none';
+        // If they explicitly cancelled, or didn't provide input, redirect them to index.html
+        if (!email && !password) { // Check if both are empty (implies cancel or no input)
+             window.location.href = 'index.html';
+        } else {
+            // If they provided partial input, show error in the same modal
+            showCustomAlert('Login Failed', 'Email and password are required. Please try again.', false, true);
+        }
         return;
     }
 
@@ -192,14 +198,11 @@ async function adminLogin() {
         let errorMessage = "Invalid credentials. Please try again.";
         if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
             errorMessage = "Invalid admin email or password.";
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = "Invalid email format.";
         }
-        showCustomAlert('Login Failed', errorMessage);
-        // After failed login attempt, re-prompt or redirect
-        onAuthStateChanged(auth, (user) => {
-            if (!(user && user.email === 'Hina@admin.com')) {
-                 window.location.href = 'index.html'; // Redirect if still not admin
-            }
-        });
+        // Show error in the same modal and keep it open for retry
+        showCustomAlert('Login Failed', errorMessage, false, true);
     }
 }
 
@@ -282,8 +285,8 @@ function renderSalesChart() {
         if (ordersData) {
             Object.values(ordersData).forEach(order => {
                 // Ensure orderDate exists and is a number (timestamp)
-                if (order.orderDate && typeof order.orderDate === 'number') {
-                    const date = new Date(order.orderDate);
+                if (order.orderDate && typeof order.orderDate === 'object' && order.orderDate.toMillis) {
+                    const date = new Date(order.orderDate.toMillis());
                     const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD
                     const price = order.productPrice || 0; // Ensure price is a number
 
@@ -581,8 +584,10 @@ async function handleDeleteProduct(event) {
             const productSnapshot = await get(ref(database, `products/${productId}`));
             const product = productSnapshot.val();
             if (product && product.imageUrl) {
-                const imageRef = storageRef(storage, product.imageUrl); // This might need parsing to get path
-                // await deleteObject(imageRef); // Uncomment if you want to delete images
+                // You might need to parse the URL to get the storage path if it's not directly the path
+                // Example: const imagePath = product.imageUrl.split('?')[0].split('%2F').pop();
+                // const imageRefToDelete = storageRef(storage, `product_images/${imagePath}`);
+                // await deleteObject(imageRefToDelete); // Uncomment if you want to delete images
             }
             await remove(ref(database, `products/${productId}`));
             showCustomAlert('Success', 'Product deleted successfully!');
@@ -620,8 +625,8 @@ function loadOrdersTable() {
             // Convert to array and sort by order date (most recent first)
             const sortedOrders = Object.entries(orders).sort(([, a], [, b]) => {
                 // Ensure orderDate exists and is a number
-                const dateA = a.orderDate && typeof a.orderDate === 'object' ? a.orderDate.toMillis() : a.orderDate || 0;
-                const dateB = b.orderDate && typeof b.orderDate === 'object' ? b.orderDate.toMillis() : b.orderDate || 0;
+                const dateA = a.orderDate && typeof a.orderDate === 'object' && a.orderDate.toMillis ? a.orderDate.toMillis() : a.orderDate || 0;
+                const dateB = b.orderDate && typeof b.orderDate === 'object' && b.orderDate.toMillis ? b.orderDate.toMillis() : b.orderDate || 0;
                 return dateB - dateA;
             });
 
@@ -974,15 +979,17 @@ compareProductsBtn.addEventListener('click', compareProducts);
 
 // Close custom alert modal when clicking outside (only if not an auth modal)
 window.addEventListener('click', (event) => {
-    if (event.target === customAlertModal && authEmailInput.style.display === 'none') {
-        customAlertModal.classList.remove('active');
-        // If it was a confirm dialog, resolve to false if clicked outside
-        if (customModalCancelBtn.style.display === 'block') {
-            // customModalCancelBtn.click(); // Simulate cancel button click - might cause issues with Promise
-            // Instead, directly resolve the promise with false
-            // This requires a more complex `showCustomAlert` to expose the resolve function directly,
-            // or modify this to handle the "cancel" behavior based on the modal's state.
-            // For now, if it's not an auth modal and clicked outside, it just closes.
+    // Only close if the click is on the overlay itself, not inside the modal content
+    if (event.target === customAlertModal) {
+        // If it's the admin login modal, and it's active, we want to keep it open
+        // unless explicitly cancelled or successfully logged in.
+        // So, if it's the customAlertModal overlay and it's currently showing auth inputs,
+        // do not close it by clicking outside.
+        if (authEmailInput.style.display === 'block' && authPasswordInput.style.display === 'block') {
+            // Do nothing, keep the login modal open
+        } else {
+            // For other types of custom alerts (non-auth), allow closing by clicking outside
+            customAlertModal.classList.remove('active');
         }
     }
     if (event.target === orderDetailsModal) {
