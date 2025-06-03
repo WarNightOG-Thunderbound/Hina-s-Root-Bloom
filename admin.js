@@ -225,86 +225,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 snapshot.forEach((childSnapshot) => {
                     const product = { id: childSnapshot.key, ...childSnapshot.val() };
                     allProducts.push(product);
-
                     const averageRating = calculateAverageRating(product.id, product.ratings);
                     const listItem = document.createElement('li');
                     listItem.innerHTML = `
                         <div class="product-info">
-                            <img src="${product.imageUrl || 'placeholder.png'}" alt="${product.title}" class="product-thumbnail">
+                            <img src="${product.imageUrl || 'Hina%E2%80%99s%20Root&Bloom.png'}" alt="${product.title}" class="product-thumbnail">
                             <div>
-                                <strong>${product.title}</strong> ($${product.price.toFixed(2)}) - ${product.category}
+                                <strong>${product.title}</strong> ($${typeof product.price === 'number' ? product.price.toFixed(2) : 'N/A'}) - ${product.category}
                                 <div class="rating-display">
                                     ${generateStarRating(averageRating)} (${Object.keys(product.ratings || {}).length} reviews)
                                 </div>
                             </div>
                         </div>
                         <div class="product-actions">
-                            <button class="admin-button edit-btn" data-id="${product.id}"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="admin-button delete-btn" data-id="${product.id}" data-image-url="${product.imageUrl || ''}"><i class="fas fa-trash-alt"></i> Delete</button>
+                            <button class="admin-button secondary edit-btn" data-id="${product.id}">Edit</button>
+                            <button class="admin-button error delete-btn" data-id="${product.id}">Delete</button>
                         </div>
                     `;
                     if (productList) productList.appendChild(listItem);
                 });
-            } else {
-                if (productList) productList.innerHTML = '<li>No products found.</li>';
-            }
-            populateProductSelects(allProducts); // Populate product selects for ratings and comparison
-        }, (error) => {
-            console.error("Error loading products:", error);
-            showCustomAlert("Error", "Failed to load products.", 'alert');
-        });
-    }
 
-    function calculateAverageRating(productId, ratings) {
-        if (!ratings) return 0;
-        const ratingValues = Object.values(ratings).map(r => r.rating);
-        if (ratingValues.length === 0) return 0;
-        const sum = ratingValues.reduce((acc, curr) => acc + curr, 0);
-        return sum / ratingValues.length;
-    }
-
-    function generateStarRating(averageRating) {
-        let starsHtml = '';
-        for (let i = 1; i <= 5; i++) {
-            if (i <= averageRating) {
-                starsHtml += '<i class="fas fa-star filled"></i>';
-            } else if (i - 0.5 <= averageRating) {
-                starsHtml += '<i class="fas fa-star-half-alt filled"></i>';
-            } else {
-                starsHtml += '<i class="far fa-star"></i>';
-            }
-        }
-        return starsHtml;
-    }
-
-
-    // Edit Product Modal
-    if (productList) {
-        productList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('edit-btn')) {
-                const productId = e.target.dataset.id;
-                const productRef = ref(database, `products/${productId}`);
-                get(productRef).then((snapshot) => {
-                    if (snapshot.exists()) {
-                        const product = snapshot.val();
-                        if (editProductId) editProductId.value = productId;
-                        if (editProductTitle) editProductTitle.value = product.title;
-                        if (editProductDescription) editProductDescription.value = product.description;
-                        if (editProductPrice) editProductPrice.value = product.price;
-                        if (editProductCategory) editProductCategory.value = product.category;
-                        if (editProductImageUrl) editProductImageUrl.value = product.imageUrl || '';
-                        if (editProductVideoUrl) editProductVideoUrl.value = product.videoUrl || '';
-                        if (editFormMessage) editFormMessage.textContent = ''; // Clear previous messages
-                        if (editProductModal) editProductModal.style.display = 'flex';
-                    } else {
-                        showCustomAlert("Error", "Product not found.", 'alert');
-                    }
-                }).catch((error) => {
-                    console.error("Error fetching product for edit:", error);
-                    showCustomAlert("Error", "Failed to load product for editing.", 'alert');
+                // Add event listeners for edit and delete buttons after products are loaded
+                document.querySelectorAll('.edit-btn').forEach(button => {
+                    button.addEventListener('click', (event) => openEditProductModal(event.target.dataset.id));
                 });
+                document.querySelectorAll('.delete-btn').forEach(button => {
+                    button.addEventListener('click', (event) => deleteProduct(event.target.dataset.id));
+                });
+
+                populateProductSelects(); // Update product selects for comparison and ratings
+            } else {
+                if (productList) productList.innerHTML = '<p>No products found.</p>';
+                populateProductSelects(); // Clear selects if no products
             }
         });
+    }
+
+    function openEditProductModal(productId) {
+        const product = allProducts.find(p => p.id === productId);
+        if (product && editProductModal && editProductId && editProductTitle && editProductDescription && editProductPrice && editProductCategory && editProductImageUrl && editProductVideoUrl) {
+            editProductId.value = product.id;
+            editProductTitle.value = product.title;
+            editProductDescription.value = product.description;
+            editProductPrice.value = product.price;
+            editProductCategory.value = product.category;
+            editProductImageUrl.value = product.imageUrl;
+            editProductVideoUrl.value = product.videoUrl || '';
+            editProductModal.style.display = 'flex';
+
+            // Populate category select for edit modal
+            populateCategorySelect(editProductCategory, product.category);
+        }
     }
 
     if (closeEditModalBtn) {
@@ -313,17 +284,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    window.addEventListener('click', (event) => {
-        if (editProductModal && event.target === editProductModal) {
-            editProductModal.style.display = 'none';
-        } else if (customAlertModal && event.target === customAlertModal) {
-            customAlertModal.style.display = 'none';
-        }
-    });
-
     if (updateProductBtn) {
         updateProductBtn.addEventListener('click', async () => {
-            const productId = editProductId ? editProductId.value : '';
+            const id = editProductId ? editProductId.value : '';
             const title = editProductTitle ? editProductTitle.value.trim() : '';
             const description = editProductDescription ? editProductDescription.value.trim() : '';
             const price = editProductPrice ? parseFloat(editProductPrice.value) : 0;
@@ -332,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const imageFile = editProductImageFile && editProductImageFile.files.length > 0 ? editProductImageFile.files[0] : null;
             const videoUrl = editProductVideoUrl ? editProductVideoUrl.value.trim() : '';
 
-            if (!title || !description || isNaN(price) || price <= 0 || !category || (!imageUrl && !imageFile)) {
+            if (!id || !title || !description || isNaN(price) || price <= 0 || !category || (!imageUrl && !imageFile)) {
                 if (editFormMessage) {
                     editFormMessage.textContent = 'Please fill in all required fields and provide either an image URL or upload an image.';
                     editFormMessage.style.color = 'var(--color-error-red)';
@@ -346,7 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let finalImageUrl = imageUrl;
-
             if (imageFile) {
                 const imageRef = storageRef(storage, `product_images/${imageFile.name}`);
                 try {
@@ -362,62 +324,74 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const updatedProduct = {
+            const productRef = ref(database, `products/${id}`);
+            update(productRef, {
                 title,
                 description,
                 price,
                 category,
                 imageUrl: finalImageUrl,
-                videoUrl: videoUrl || null,
-                updatedAt: serverTimestamp()
-            };
-
-            update(ref(database, `products/${productId}`), updatedProduct)
-                .then(() => {
-                    if (editFormMessage) {
-                        editFormMessage.textContent = 'Product updated successfully!';
-                        editFormMessage.style.color = 'var(--color-success-green)';
-                    }
-                    loadProducts(); // Refresh list
-                    if (editProductModal) editProductModal.style.display = 'none';
-                })
-                .catch((error) => {
-                    console.error("Error updating product:", error);
-                    if (editFormMessage) {
-                        editFormMessage.textContent = 'Error updating product.';
-                        editFormMessage.style.color = 'var(--color-error-red)';
-                    }
-                });
+                videoUrl: videoUrl || null
+            })
+            .then(() => {
+                if (editFormMessage) {
+                    editFormMessage.textContent = 'Product updated successfully!';
+                    editFormMessage.style.color = 'var(--color-success-green)';
+                }
+                if (editProductModal) editProductModal.style.display = 'none';
+                loadProducts(); // Reload products to update the list
+            })
+            .catch((error) => {
+                console.error("Error updating product:", error);
+                if (editFormMessage) {
+                    editFormMessage.textContent = 'Error updating product.';
+                    editFormMessage.style.color = 'var(--color-error-red)';
+                }
+            });
         });
     }
 
+    function deleteProduct(productId) {
+        showCustomAlert("Confirm Deletion", "Are you sure you want to delete this product? This action cannot be undone.", 'confirm', () => {
+            const productRef = ref(database, `products/${productId}`);
+            const productToDelete = allProducts.find(p => p.id === productId);
 
-    // Delete Product
-    if (productList) {
-        productList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-btn')) {
-                const productId = e.target.dataset.id;
-                const imageUrlToDelete = e.target.dataset.imageUrl;
-
-                showCustomAlert("Confirm Delete", "Are you sure you want to delete this product? This action cannot be undone.", 'confirm', () => {
-                    // User confirmed delete
-                    remove(ref(database, `products/${productId}`))
+            if (productToDelete && productToDelete.imageUrl && productToDelete.imageUrl.startsWith('gs://')) {
+                const imageStorageRef = storageRef(storage, productToDelete.imageUrl);
+                deleteObject(imageStorageRef).then(() => {
+                    console.log("Image deleted from storage.");
+                    remove(productRef)
                         .then(() => {
-                            // Also delete image from storage if it's not a placeholder
-                            if (imageUrlToDelete && !imageUrlToDelete.includes('placeholder.png')) {
-                                const imageRef = storageRef(storage, imageUrlToDelete);
-                                deleteObject(imageRef).catch((error) => {
-                                    console.warn("Error deleting image from storage (might not exist):", error);
-                                });
-                            }
-                            showCustomAlert("Deleted!", "Product deleted successfully.", 'alert');
-                            loadProducts(); // Refresh the list
+                            showCustomAlert("Product Deleted", "Product and its image have been successfully deleted.", 'alert');
+                            loadProducts(); // Reload products after deletion
                         })
                         .catch((error) => {
-                            console.error("Error deleting product:", error);
-                            showCustomAlert("Delete Error", "Failed to delete product.", 'alert');
+                            console.error("Error deleting product from database:", error);
+                            showCustomAlert("Error", "Failed to delete product from database.", 'alert');
+                        });
+                }).catch((error) => {
+                    console.error("Error deleting image from storage:", error);
+                    // Still try to delete product even if image deletion fails
+                    remove(productRef)
+                        .then(() => {
+                            showCustomAlert("Product Deleted (Image Error)", "Product deleted from database, but image deletion failed.", 'alert');
+                            loadProducts();
+                        })
+                        .catch((error) => {
+                            console.error("Error deleting product from database after image delete failure:", error);
+                            showCustomAlert("Error", "Failed to delete product from database even after image error.", 'alert');
                         });
                 });
+            } else {
+                remove(productRef)
+                    .then(() => {
+                        showCustomAlert("Product Deleted", "Product has been successfully deleted.", 'alert');
+                        loadProducts(); // Reload products after deletion
+                    })
+                    .catch((error) => {
+                        console.error("Error deleting product:", error);
+                        showCustomAlert("Error", "Failed to delete product.", 'alert');
+                    });
             }
         });
     }
@@ -428,14 +402,15 @@ document.addEventListener('DOMContentLoaded', () => {
         addCategoryBtn.addEventListener('click', () => {
             const categoryName = addCategoryInput ? addCategoryInput.value.trim() : '';
             if (categoryName) {
-                push(ref(database, 'categories'), { name: categoryName })
+                const categoryRef = ref(database, `categories/${categoryName}`);
+                set(categoryRef, true) // Store category as a key with a true value
                     .then(() => {
                         if (categoryMessage) {
-                            categoryMessage.textContent = 'Category added!';
+                            categoryMessage.textContent = `Category "${categoryName}" added successfully!`;
                             categoryMessage.style.color = 'var(--color-success-green)';
                         }
                         if (addCategoryInput) addCategoryInput.value = '';
-                        populateCategorySelect(); // Refresh selects
+                        populateCategorySelect();
                     })
                     .catch((error) => {
                         console.error("Error adding category:", error);
@@ -446,77 +421,75 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
             } else {
                 if (categoryMessage) {
-                    categoryMessage.textContent = 'Category name cannot be empty.';
+                    categoryMessage.textContent = 'Please enter a category name.';
                     categoryMessage.style.color = 'var(--color-error-red)';
                 }
             }
         });
     }
 
-    function loadCategories() {
+    function populateCategorySelect(selectElement = null, selectedCategory = null) {
         const categoriesRef = ref(database, 'categories');
         onValue(categoriesRef, (snapshot) => {
-            if (categoryList) categoryList.innerHTML = '';
+            const defaultSelect = productCategorySelect;
+            const editSelect = selectElement || editProductCategory; // Use passed element or default edit
+
+            if (defaultSelect) defaultSelect.innerHTML = '<option value="">Select a Category</option>';
+            if (editSelect) editSelect.innerHTML = '<option value="">Select a Category</option>';
+
+            const categoryListElement = categoryList;
+            if (categoryListElement) categoryListElement.innerHTML = '';
+
             if (snapshot.exists()) {
                 snapshot.forEach((childSnapshot) => {
-                    const category = { id: childSnapshot.key, ...childSnapshot.val() };
-                    const listItem = document.createElement('li');
-                    listItem.innerHTML = `
-                        ${category.name}
-                        <button class="admin-button delete-category-btn" data-id="${category.id}"><i class="fas fa-trash-alt"></i></button>
+                    const categoryName = childSnapshot.key;
+                    const option = document.createElement('option');
+                    option.value = categoryName;
+                    option.textContent = categoryName;
+
+                    if (defaultSelect) defaultSelect.appendChild(option.cloneNode(true));
+                    if (editSelect) {
+                        const editOption = option.cloneNode(true);
+                        if (selectedCategory && categoryName === selectedCategory) {
+                            editOption.selected = true;
+                        }
+                        editSelect.appendChild(editOption);
+                    }
+
+                    // Populate category list for management
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        ${categoryName}
+                        <button class="admin-button error delete-category-btn" data-category="${categoryName}">Delete</button>
                     `;
-                    if (categoryList) categoryList.appendChild(listItem);
+                    if (categoryListElement) categoryListElement.appendChild(li);
+                });
+
+                document.querySelectorAll('.delete-category-btn').forEach(button => {
+                    button.addEventListener('click', (event) => deleteCategory(event.target.dataset.category));
                 });
             } else {
-                if (categoryList) categoryList.innerHTML = '<li>No categories found.</li>';
-            }
-        }, (error) => {
-            console.error("Error loading categories:", error);
-            showCustomAlert("Error", "Failed to load categories.", 'alert');
-        });
-    }
-
-    if (categoryList) {
-        categoryList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-category-btn')) {
-                const categoryId = e.target.dataset.id;
-                showCustomAlert("Confirm Delete", "Are you sure you want to delete this category? Products assigned to this category will remain, but the category will be removed from the list.", 'confirm', () => {
-                    remove(ref(database, `categories/${categoryId}`))
-                        .then(() => {
-                            showCustomAlert("Deleted!", "Category deleted successfully.", 'alert');
-                            populateCategorySelect(); // Refresh selects
-                        })
-                        .catch((error) => {
-                            console.error("Error deleting category:", error);
-                            showCustomAlert("Delete Error", "Failed to delete category.", 'alert');
-                        });
-                });
+                if (categoryListElement) categoryListElement.innerHTML = '<p>No categories found.</p>';
             }
         });
     }
 
-    function populateCategorySelect() {
-        const categoriesRef = ref(database, 'categories');
-        onValue(categoriesRef, (snapshot) => {
-            // Clear existing options except the first "Select Category"
-            if (productCategorySelect) productCategorySelect.innerHTML = '<option value="">Select Category</option>';
-            if (editProductCategory) editProductCategory.innerHTML = '<option value="">Select Category</option>';
-
-            if (snapshot.exists()) {
-                snapshot.forEach((childSnapshot) => {
-                    const category = childSnapshot.val();
-                    const optionAdd = document.createElement('option');
-                    optionAdd.value = category.name;
-                    optionAdd.textContent = category.name;
-                    if (productCategorySelect) productCategorySelect.appendChild(optionAdd);
-
-                    const optionEdit = document.createElement('option');
-                    optionEdit.value = category.name;
-                    optionEdit.textContent = category.name;
-                    if (editProductCategory) editProductCategory.appendChild(optionEdit);
+    function deleteCategory(categoryName) {
+        showCustomAlert("Confirm Deletion", `Are you sure you want to delete the category "${categoryName}"? Products in this category will not be deleted but their category will be cleared.`, 'confirm', () => {
+            const categoryRef = ref(database, `categories/${categoryName}`);
+            remove(categoryRef)
+                .then(() => {
+                    showCustomAlert("Category Deleted", "Category has been successfully deleted.", 'alert');
+                    populateCategorySelect(); // Reload categories
+                    // Optionally, update products that had this category to null or a default
+                    // This would require iterating through products and updating them.
+                    // For now, we'll assume the product management handles display of cleared categories.
+                })
+                .catch((error) => {
+                    console.error("Error deleting category:", error);
+                    showCustomAlert("Error", "Failed to delete category.", 'alert');
                 });
-            }
-        }, { onlyOnce: true }); // Use onlyOnce to prevent continuous re-rendering
+        });
     }
 
 
@@ -526,213 +499,201 @@ document.addEventListener('DOMContentLoaded', () => {
         onValue(ordersRef, (snapshot) => {
             if (orderList) orderList.innerHTML = '';
             if (snapshot.exists()) {
-                const orders = [];
                 snapshot.forEach((childSnapshot) => {
-                    orders.push({ id: childSnapshot.key, ...childSnapshot.val() });
-                });
+                    const order = childSnapshot.val();
+                    const orderId = childSnapshot.key;
+                    const orderDate = order.timestamp ? new Date(order.timestamp).toLocaleString() : 'N/A';
+                    const orderTotal = order.items ? order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2) : '0.00';
+                    const orderStatus = order.status || 'Pending';
 
-                // Sort orders by orderDate, newest first
-                orders.sort((a, b) => {
-                    const dateA = a.orderDate ? (typeof a.orderDate === 'object' ? a.orderDate.toMillis() : a.orderDate) : 0;
-                    const dateB = b.orderDate ? (typeof b.orderDate === 'object' ? b.orderDate.toMillis() : b.orderDate) : 0;
-                    return dateB - dateA;
-                });
-
-                orders.forEach(order => {
-                    const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
                     const listItem = document.createElement('li');
-                    listItem.classList.add('order-item');
                     listItem.innerHTML = `
-                        <div class="order-header">
-                            <strong>Order ID:</strong> ${order.id} <br>
-                            <strong>Product:</strong> ${order.productTitle} ($${order.productPrice.toFixed(2)}) <br>
-                            <strong>Order Date:</strong> ${orderDate} <br>
-                            <strong>Status:</strong> 
-                            <select class="order-status-select" data-id="${order.id}">
-                                <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Processing</option>
-                                <option value="Shipped" ${order.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
-                                <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
-                                <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                        <strong>Order ID:</strong> ${orderId} <br>
+                        <strong>Date:</strong> ${orderDate} <br>
+                        <strong>Customer Email:</strong> ${order.customerEmail || 'N/A'} <br>
+                        <strong>Total:</strong> $${orderTotal} <br>
+                        <strong>Status:</strong> <span id="order-status-${orderId}">${orderStatus}</span> <br>
+                        <strong>Items:</strong>
+                        <ul>
+                            ${order.items ? order.items.map(item => `<li>${item.title} (x${item.quantity}) - $${item.price.toFixed(2)}</li>`).join('') : 'No items'}
+                        </ul>
+                        <div class="form-group">
+                            <label for="status-select-${orderId}">Update Status:</label>
+                            <select id="status-select-${orderId}" data-id="${orderId}">
+                                <option value="Pending" ${orderStatus === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Processing" ${orderStatus === 'Processing' ? 'selected' : ''}>Processing</option>
+                                <option value="Shipped" ${orderStatus === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                                <option value="Delivered" ${orderStatus === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                <option value="Cancelled" ${orderStatus === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
                             </select>
                         </div>
-                        <div class="order-details">
-                            <img src="${order.productImageUrl || 'placeholder.png'}" alt="${order.productTitle}" class="order-product-thumbnail">
-                            <p><strong>Address:</strong> ${order.address || 'N/A'}</p>
-                            <p><strong>Phone:</strong> ${order.phoneNumber || 'N/A'}</p>
-                        </div>
-                        <button class="admin-button delete-order-btn" data-id="${order.id}"><i class="fas fa-trash-alt"></i> Delete Order</button>
+                        <button class="admin-button secondary update-order-status-btn" data-id="${orderId}">Update Status</button>
                     `;
                     if (orderList) orderList.appendChild(listItem);
                 });
 
-                document.querySelectorAll('.order-status-select').forEach(select => {
-                    select.addEventListener('change', (e) => {
-                        const orderId = e.target.dataset.id;
-                        const newStatus = e.target.value;
-                        updateOrderStatus(orderId, newStatus);
-                    });
+                document.querySelectorAll('.update-order-status-btn').forEach(button => {
+                    button.addEventListener('click', (event) => updateOrderStatus(event.target.dataset.id));
                 });
-
-                document.querySelectorAll('.delete-order-btn').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const orderId = e.target.dataset.id;
-                        showCustomAlert("Confirm Delete", "Are you sure you want to delete this order?", 'confirm', () => {
-                            deleteOrder(orderId);
-                        });
-                    });
-                });
-
             } else {
-                if (orderList) orderList.innerHTML = '<li>No orders found.</li>';
+                if (orderList) orderList.innerHTML = '<p>No orders found.</p>';
             }
-        }, (error) => {
-            console.error("Error loading orders:", error);
-            showCustomAlert("Error", "Failed to load orders.", 'alert');
         });
     }
 
-    function updateOrderStatus(orderId, newStatus) {
+    function updateOrderStatus(orderId) {
+        const statusSelect = document.getElementById(`status-select-${orderId}`);
+        const newStatus = statusSelect ? statusSelect.value : 'Pending';
+
         const orderRef = ref(database, `orders/${orderId}`);
-        update(orderRef, { status: newStatus, lastUpdated: serverTimestamp() })
+        update(orderRef, { status: newStatus })
             .then(() => {
-                showCustomAlert("Status Updated", `Order ${orderId} status updated to ${newStatus}.`, 'alert');
+                showCustomAlert("Order Status Updated", `Order ${orderId} status updated to ${newStatus}.`, 'alert');
+                // UI will automatically update via onValue listener
             })
-            .catch(error => {
+            .catch((error) => {
                 console.error("Error updating order status:", error);
-                showCustomAlert("Update Failed", "Failed to update order status. Please try again.", 'alert');
+                showCustomAlert("Error", "Failed to update order status.", 'alert');
             });
     }
-
-    function deleteOrder(orderId) {
-        const orderRef = ref(database, `orders/${orderId}`);
-        remove(orderRef)
-            .then(() => {
-                showCustomAlert("Order Deleted", `Order ${orderId} has been deleted.`, 'alert');
-            })
-            .catch(error => {
-                console.error("Error deleting order:", error);
-                showCustomAlert("Delete Failed", "Failed to delete order. Please try again.", 'alert');
-            });
-    }
-
 
     // --- Ratings Analytics ---
-    function loadRatings() {
-        // This function doesn't actively load ratings but prepares the UI to display them.
-        // The actual ratings data is loaded with products (allProducts array)
-        // and used by populateProductSelects and updateRatingsAnalytics.
-    }
-
-    function populateProductSelects(productsData) {
-        // Populate rating product select
+    function populateProductSelects() {
         if (productRatingSelect) productRatingSelect.innerHTML = '<option value="">Select a Product</option>';
         if (compareProduct1Select) compareProduct1Select.innerHTML = '<option value="">Select Product 1</option>';
         if (compareProduct2Select) compareProduct2Select.innerHTML = '<option value="">Select Product 2</option>';
 
-        productsData.forEach(product => {
-            const optionRating = document.createElement('option');
-            optionRating.value = product.id;
-            optionRating.textContent = product.title;
-            if (productRatingSelect) productRatingSelect.appendChild(optionRating);
+        allProducts.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = product.title;
 
-            const optionCompare1 = document.createElement('option');
-            optionCompare1.value = product.id;
-            optionCompare1.textContent = product.title;
-            if (compareProduct1Select) compareProduct1Select.appendChild(optionCompare1);
-
-            const optionCompare2 = document.createElement('option');
-            optionCompare2.value = product.id;
-            optionCompare2.textContent = product.title;
-            if (compareProduct2Select) compareProduct2Select.appendChild(optionCompare2);
+            if (productRatingSelect) productRatingSelect.appendChild(option.cloneNode(true));
+            if (compareProduct1Select) compareProduct1Select.appendChild(option.cloneNode(true));
+            if (compareProduct2Select) compareProduct2Select.appendChild(option.cloneNode(true));
         });
+
+        // Trigger analytics load for the first product by default if any exist
+        if (allProducts.length > 0 && productRatingSelect && productRatingSelect.value === "") {
+            productRatingSelect.value = allProducts[0].id;
+            loadRatings();
+        } else if (allProducts.length === 0) {
+            if (averageRatingDisplay) averageRatingDisplay.textContent = 'N/A';
+            if (ratingDistributionList) ratingDistributionList.innerHTML = '';
+        }
     }
 
     if (productRatingSelect) {
-        productRatingSelect.addEventListener('change', (e) => {
-            const selectedProductId = e.target.value;
-            updateRatingsAnalytics(selectedProductId);
-        });
+        productRatingSelect.addEventListener('change', loadRatings);
     }
 
-    function updateRatingsAnalytics(productId) {
-        if (averageRatingDisplay) averageRatingDisplay.textContent = 'N/A';
-        if (ratingDistributionList) ratingDistributionList.innerHTML = '';
-
-        if (!productId) {
-            return;
+    function calculateAverageRating(productId, ratings) {
+        if (!ratings || Object.keys(ratings).length === 0) {
+            return 0;
         }
+        const totalRatings = Object.values(ratings).length;
+        const sumRatings = Object.values(ratings).reduce((sum, r) => sum + r.rating, 0);
+        return sumRatings / totalRatings;
+    }
 
-        const product = allProducts.find(p => p.id === productId);
-        if (!product || !product.ratings) {
-            if (ratingDistributionList) ratingDistributionList.innerHTML = '<li>No ratings for this product.</li>';
-            return;
+    function generateStarRating(averageRating) {
+        const fullStars = Math.floor(averageRating);
+        const halfStar = averageRating % 1 >= 0.5;
+        let starsHtml = '';
+        for (let i = 0; i < fullStars; i++) {
+            starsHtml += '<i class="fas fa-star" style="color: gold;"></i>';
         }
-
-        const ratings = Object.values(product.ratings).map(r => r.rating);
-        if (ratings.length === 0) {
-            if (ratingDistributionList) ratingDistributionList.innerHTML = '<li>No ratings for this product.</li>';
-            return;
+        if (halfStar) {
+            starsHtml += '<i class="fas fa-star-half-alt" style="color: gold;"></i>';
         }
-
-        const sum = ratings.reduce((acc, curr) => acc + curr, 0);
-        const average = (sum / ratings.length).toFixed(2);
-        if (averageRatingDisplay) averageRatingDisplay.textContent = average;
-
-        const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-        ratings.forEach(rating => {
-            distribution[rating]++;
-        });
-
-        for (let i = 5; i >= 1; i--) {
-            const count = distribution[i];
-            const percentage = (count / ratings.length * 100).toFixed(1);
-            const listItem = document.createElement('li');
-            listItem.textContent = `${i} Star: ${count} (${percentage}%)`;
-            if (ratingDistributionList) ratingDistributionList.appendChild(listItem);
+        for (let i = 0; i < (5 - fullStars - (halfStar ? 1 : 0)); i++) {
+            starsHtml += '<i class="far fa-star" style="color: gold;"></i>';
         }
+        return starsHtml;
     }
 
 
-    // --- Product Comparison Chart ---
+    function loadRatings() {
+        const selectedProductId = productRatingSelect ? productRatingSelect.value : '';
+        if (!selectedProductId) {
+            if (averageRatingDisplay) averageRatingDisplay.textContent = 'N/A';
+            if (ratingDistributionList) ratingDistributionList.innerHTML = '';
+            return;
+        }
+
+        const product = allProducts.find(p => p.id === selectedProductId);
+
+        if (product && product.ratings) {
+            const ratings = Object.values(product.ratings);
+            const totalReviews = ratings.length;
+
+            if (totalReviews === 0) {
+                if (averageRatingDisplay) averageRatingDisplay.textContent = 'N/A';
+                if (ratingDistributionList) ratingDistributionList.innerHTML = '<li>No ratings yet.</li>';
+                return;
+            }
+
+            const average = calculateAverageRating(selectedProductId, product.ratings);
+            if (averageRatingDisplay) averageRatingDisplay.textContent = `${average.toFixed(1)} ${generateStarRating(average)}`;
+
+            const distribution = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+            ratings.forEach(r => {
+                if (distribution[r.rating]) {
+                    distribution[r.rating]++;
+                }
+            });
+
+            if (ratingDistributionList) {
+                ratingDistributionList.innerHTML = '';
+                for (let i = 5; i >= 1; i--) {
+                    const percentage = totalReviews > 0 ? ((distribution[i] / totalReviews) * 100).toFixed(1) : 0;
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        ${i} Star${i > 1 ? 's' : ''}: ${distribution[i]} reviews (${percentage}%)
+                        <div class="star-count">${generateStarRating(i)}</div>
+                    `;
+                    ratingDistributionList.appendChild(li);
+                }
+            }
+        } else {
+            if (averageRatingDisplay) averageRatingDisplay.textContent = 'N/A';
+            if (ratingDistributionList) ratingDistributionList.innerHTML = '<li>No ratings found for this product.</li>';
+        }
+    }
+
+
+    // --- Product Comparison ---
     if (compareProductsBtn) {
         compareProductsBtn.addEventListener('click', () => {
             const product1Id = compareProduct1Select ? compareProduct1Select.value : '';
             const product2Id = compareProduct2Select ? compareProduct2Select.value : '';
 
-            if (!product1Id && !product2Id) {
-                showCustomAlert("Selection Required", "Please select at least one product to compare.", 'alert');
+            if (!product1Id || !product2Id) {
+                showCustomAlert("Selection Required", "Please select two products to compare.", 'alert');
+                return;
+            }
+            if (product1Id === product2Id) {
+                showCustomAlert("Invalid Selection", "Please select two *different* products to compare.", 'alert');
                 return;
             }
 
             const product1 = allProducts.find(p => p.id === product1Id);
             const product2 = allProducts.find(p => p.id === product2Id);
 
-            if ((product1Id && !product1) || (product2Id && !product2)) {
-                showCustomAlert("Error", "Selected product(s) not found.", 'alert');
-                return;
+            if (product1 && product2) {
+                renderProductComparisonChart(product1, product2);
+            } else {
+                showCustomAlert("Error", "Selected products not found.", 'alert');
             }
-
-            renderProductComparisonChart(product1, product2);
         });
     }
 
     function renderProductComparisonChart(product1, product2) {
         const labels = ['Price', 'Average Rating'];
+        const data1 = [product1.price, calculateAverageRating(product1.id, product1.ratings)];
+        const data2 = [product2.price, calculateAverageRating(product2.id, product2.ratings)];
+
         const datasets = [];
-
-        const data1 = [];
-        const data2 = [];
-
-        if (product1) {
-            data1.push(product1.price);
-            data1.push(calculateAverageRating(product1.id, product1.ratings));
-        }
-        if (product2) {
-            data2.push(product2.price);
-            data2.push(calculateAverageRating(product2.id, product2.ratings));
-        }
-
         if (product1) {
             datasets.push({
                 label: product1.title,
