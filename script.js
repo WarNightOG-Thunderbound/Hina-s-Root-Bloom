@@ -45,12 +45,6 @@ const toggleOrderHistoryBtn = document.getElementById('toggle-order-history-btn'
 const orderHistorySection = document.getElementById('order-history-section');
 const orderHistoryList = document.getElementById('order-history-list');
 
-// Auth elements
-const loginButton = document.getElementById('login-button');
-const registerButton = document.getElementById('register-button'); // New register button
-const logoutButton = document.getElementById('logout-button');
-const adminLinkContainer = document.getElementById('admin-link-container');
-
 // Custom Alert Modal elements
 const customAlertModal = document.getElementById('custom-alert-modal');
 const customModalTitle = document.getElementById('custom-modal-title');
@@ -59,17 +53,14 @@ const customModalOkBtn = document.getElementById('custom-modal-ok-btn');
 const customModalCancelBtn = document.getElementById('custom-modal-cancel-btn');
 const addressInput = document.getElementById('address-input');
 const phoneInput = document.getElementById('phone-input');
-const authEmailInput = document.getElementById('auth-email-input');       // New for auth modal
-const authPasswordInput = document.getElementById('auth-password-input'); // New for auth modal
+const authEmailInput = document.getElementById('auth-email-input');       // For auth modal
+const authPasswordInput = document.getElementById('auth-password-input'); // For auth modal
 
 // Rating Modal Elements
 const ratingModal = document.getElementById('rating-modal');
 const closeRatingModalBtn = document.getElementById('close-rating-modal-btn');
 const ratingStarsContainer = document.getElementById('rating-stars-container');
 const submitRatingButton = document.getElementById('submit-rating-button');
-
-// Open Code Button
-const openCodeButton = document.getElementById('open-code-button');
 
 
 let allProducts = [];
@@ -78,6 +69,15 @@ let selectedRating = 0; // To store the selected rating
 
 // --- Utility Functions ---
 
+/**
+ * Displays a custom alert/confirmation modal.
+ * @param {string} title - The title of the modal.
+ * @param {string} message - The message content of the modal.
+ * @param {boolean} isConfirm - If true, displays a cancel button for confirmation.
+ * @param {boolean} showAuthInputs - If true, displays email and password input fields.
+ * @param {boolean} showAddressPhone - If true, displays address and phone input fields.
+ * @returns {Promise<boolean|object>} Resolves to true/false for confirm, or an object {email, password} or {address, phone} for inputs.
+ */
 function showCustomAlert(title, message, isConfirm = false, showAuthInputs = false, showAddressPhone = false) {
     return new Promise((resolve) => {
         customModalTitle.textContent = title;
@@ -137,6 +137,10 @@ function showCustomAlert(title, message, isConfirm = false, showAuthInputs = fal
 
 // --- Product Display and Filtering ---
 
+/**
+ * Displays products in the product grid.
+ * @param {Array<Object>} productsToDisplay - An array of product objects to display.
+ */
 function displayProducts(productsToDisplay) {
     productList.innerHTML = '';
     if (productsToDisplay.length === 0) {
@@ -170,6 +174,11 @@ function displayProducts(productsToDisplay) {
     });
 }
 
+/**
+ * Generates HTML for star ratings based on an average rating.
+ * @param {number} averageRating - The average rating of a product.
+ * @returns {string} HTML string of star icons.
+ */
 function generateStarRating(averageRating) {
     let starsHtml = '';
     const roundedRating = Math.round(averageRating);
@@ -183,7 +192,9 @@ function generateStarRating(averageRating) {
     return starsHtml;
 }
 
-
+/**
+ * Applies category filters, search filters, and sorting to the product list.
+ */
 function applyFiltersAndSort() {
     let filteredProducts = [...allProducts];
 
@@ -223,6 +234,10 @@ function applyFiltersAndSort() {
     displayProducts(filteredProducts);
 }
 
+/**
+ * Loads products from Firebase Realtime Database and updates the display.
+ * Calculates average rating and rating count for each product.
+ */
 function loadProducts() {
     const productsRef = ref(database, 'products');
     onValue(productsRef, (snapshot) => {
@@ -248,6 +263,9 @@ function loadProducts() {
     });
 }
 
+/**
+ * Populates the category filter buttons from Firebase Realtime Database.
+ */
 function populateCategories() {
     const categoriesRef = ref(database, 'categories');
     onValue(categoriesRef, (snapshot) => {
@@ -264,7 +282,10 @@ function populateCategories() {
     });
 }
 
-
+/**
+ * Displays product details in a modal.
+ * @param {string} productId - The ID of the product to display.
+ */
 function viewDetails(productId) {
     currentProduct = allProducts.find(p => p.id === productId);
     if (currentProduct) {
@@ -286,48 +307,105 @@ function viewDetails(productId) {
     }
 }
 
+/**
+ * Handles the process of placing an order, including authentication if necessary.
+ */
 async function placeOrder() {
     if (!currentProduct) {
         showCustomAlert('Error', 'No product selected for order.');
         return;
     }
 
-    const user = auth.currentUser;
+    let user = auth.currentUser;
 
+    // If user is not logged in, prompt for login/registration
     if (!user) {
-        showCustomAlert('Login Required', 'You must be logged in to place an order.');
-        return;
+        const authChoice = await showCustomAlert('Login/Register', 'You must be logged in to place an order. Please enter your credentials to log in or register:', true, true);
+
+        if (!authChoice) { // User cancelled the auth prompt
+            showCustomAlert('Order Cancelled', 'Order cancelled. Please log in or register to place an order.');
+            return;
+        }
+
+        const { email, password } = authChoice;
+
+        if (!email || !password) {
+            showCustomAlert('Order Cancelled', 'Email and password are required for login/registration.');
+            return;
+        }
+
+        try {
+            // Try to sign in first
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            user = userCredential.user;
+            showCustomAlert('Login Successful', `Welcome, ${user.email}!`);
+        } catch (loginError) {
+            // If login fails, offer registration
+            if (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/wrong-password') {
+                const registerConfirm = await showCustomAlert('Login Failed', 'Invalid email or password. Would you like to register a new account?', true);
+                if (registerConfirm) {
+                    try {
+                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                        user = userCredential.user;
+                        showCustomAlert('Registration Successful', `Account created for ${user.email}! You are now logged in.`);
+                    } catch (registerError) {
+                        console.error("Registration error:", registerError.code, registerError.message);
+                        let errorMessage = "Failed to register. Please try again.";
+                        if (registerError.code === 'auth/email-already-in-use') {
+                            errorMessage = "This email is already registered.";
+                        } else if (registerError.code === 'auth/invalid-email') {
+                            errorMessage = "Invalid email format.";
+                        } else if (registerError.code === 'auth/weak-password') {
+                            errorMessage = "Password should be at least 6 characters.";
+                        }
+                        showCustomAlert('Registration Failed', errorMessage);
+                        return; // Exit if registration fails
+                    }
+                } else {
+                    showCustomAlert('Order Cancelled', 'Order cancelled. Please log in or register to place an order.');
+                    return; // Exit if user declines registration
+                }
+            } else {
+                showCustomAlert('Login Failed', 'An unexpected error occurred during login: ' + loginError.message);
+                return; // Exit if other login errors occur
+            }
+        }
     }
 
-    const { address, phone } = await showCustomAlert('Place Order', 'Please enter your address and phone number:', true, false, true);
+    // If user is now logged in (either pre-existing or newly registered), proceed with order details
+    if (user) {
+        const { address, phone } = await showCustomAlert('Place Order', 'Please enter your address and phone number:', true, false, true);
 
-    if (address && phone) {
-        try {
-            const newOrderRef = push(ref(database, 'orders'));
-            await set(newOrderRef, {
-                userId: user.uid,
-                userName: user.email, // Or get user's display name if available
-                productId: currentProduct.id,
-                productTitle: currentProduct.title,
-                productPrice: currentProduct.price,
-                productImageUrl: currentProduct.imageUrl,
-                address: address,
-                phoneNumber: phone,
-                orderDate: serverTimestamp(),
-                status: 'Pending'
-            });
-            showCustomAlert('Order Placed!', 'Your order has been placed successfully.');
-            productDetailsModal.style.display = 'none'; // Close modal after order
-        } catch (error) {
-            console.error("Error placing order:", error);
-            showCustomAlert('Error', 'Failed to place order. Please try again.');
+        if (address && phone) {
+            try {
+                const newOrderRef = push(ref(database, 'orders'));
+                await set(newOrderRef, {
+                    userId: user.uid,
+                    userName: user.email, // Or get user's display name if available
+                    productId: currentProduct.id,
+                    productTitle: currentProduct.title,
+                    productPrice: currentProduct.price,
+                    productImageUrl: currentProduct.imageUrl,
+                    address: address,
+                    phoneNumber: phone,
+                    orderDate: serverTimestamp(),
+                    status: 'Pending'
+                });
+                showCustomAlert('Order Placed!', 'Your order has been placed successfully.');
+                productDetailsModal.style.display = 'none'; // Close modal after order
+            } catch (error) {
+                console.error("Error placing order:", error);
+                showCustomAlert('Error', 'Failed to place order. Please try again.');
+            }
+        } else {
+            showCustomAlert('Order Cancelled', 'Address and phone number are required to place an order.');
         }
-    } else {
-        showCustomAlert('Order Cancelled', 'Address and phone number are required to place an order.');
     }
 }
 
-
+/**
+ * Loads and displays the current user's order history.
+ */
 function loadOrderHistory() {
     const user = auth.currentUser;
 
@@ -372,7 +450,9 @@ function loadOrderHistory() {
     });
 }
 
-
+/**
+ * Updates the visual state of the star rating icons based on `selectedRating`.
+ */
 function updateRatingStars() {
     ratingStarsContainer.querySelectorAll('.fa-star').forEach(star => {
         const rating = parseInt(star.dataset.rating);
@@ -386,116 +466,108 @@ function updateRatingStars() {
     });
 }
 
+/**
+ * Handles the submission of a product rating, including authentication if necessary.
+ */
 async function submitProductRating() {
     if (!currentProduct) {
         showCustomAlert('Error', 'No product selected to rate.');
         return;
     }
 
-    const user = auth.currentUser;
+    let user = auth.currentUser;
 
+    // If user is not logged in, prompt for login/registration
     if (!user) {
-        showCustomAlert('Login Required', 'You must be logged in to submit a rating.');
-        return;
+        const authChoice = await showCustomAlert('Login/Register', 'You must be logged in to submit a rating. Please enter your credentials to log in or register:', true, true);
+
+        if (!authChoice) { // User cancelled the auth prompt
+            showCustomAlert('Rating Cancelled', 'Rating cancelled. Please log in or register to submit a rating.');
+            return;
+        }
+
+        const { email, password } = authChoice;
+
+        if (!email || !password) {
+            showCustomAlert('Rating Cancelled', 'Email and password are required for login/registration.');
+            return;
+        }
+
+        try {
+            // Try to sign in first
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            user = userCredential.user;
+            showCustomAlert('Login Successful', `Welcome, ${user.email}!`);
+        } catch (loginError) {
+            // If login fails, offer registration
+            if (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/wrong-password') {
+                const registerConfirm = await showCustomAlert('Login Failed', 'Invalid email or password. Would you like to register a new account?', true);
+                if (registerConfirm) {
+                    try {
+                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                        user = userCredential.user;
+                        showCustomAlert('Registration Successful', `Account created for ${user.email}! You are now logged in.`);
+                    } catch (registerError) {
+                        console.error("Registration error:", registerError.code, registerError.message);
+                        let errorMessage = "Failed to register. Please try again.";
+                        if (registerError.code === 'auth/email-already-in-use') {
+                            errorMessage = "This email is already registered.";
+                        } else if (registerError.code === 'auth/invalid-email') {
+                            errorMessage = "Invalid email format.";
+                        } else if (registerError.code === 'auth/weak-password') {
+                            errorMessage = "Password should be at least 6 characters.";
+                        }
+                        showCustomAlert('Registration Failed', errorMessage);
+                        return; // Exit if registration fails
+                    }
+                } else {
+                    showCustomAlert('Rating Cancelled', 'Rating cancelled. Please log in or register to submit a rating.');
+                    return; // Exit if user declines registration
+                }
+            } else {
+                showCustomAlert('Login Failed', 'An unexpected error occurred during login: ' + loginError.message);
+                return; // Exit if other login errors occur
+            }
+        }
     }
 
-    if (selectedRating === 0) {
-        showCustomAlert('Invalid Rating', 'Please select a star rating.');
-        return;
-    }
+    // If user is now logged in, proceed with rating submission
+    if (user) {
+        if (selectedRating === 0) {
+            showCustomAlert('Invalid Rating', 'Please select a star rating.');
+            return;
+        }
 
-    try {
-        const productRef = ref(database, `products/${currentProduct.id}/ratings/${user.uid}`);
-        await set(productRef, selectedRating);
-        showCustomAlert('Rating Submitted', 'Thank you for your feedback!');
-        closeRatingModal();
-        // Re-load products to update displayed ratings
-        loadProducts();
-    } catch (error) {
-        console.error("Error submitting rating:", error);
-        showCustomAlert('Error', 'Failed to submit rating. Please try again.');
+        try {
+            const productRef = ref(database, `products/${currentProduct.id}/ratings/${user.uid}`);
+            await set(productRef, selectedRating);
+            showCustomAlert('Rating Submitted', 'Thank you for your feedback!');
+            closeRatingModal();
+            // Re-load products to update displayed ratings
+            loadProducts();
+        } catch (error) {
+            console.error("Error submitting rating:", error);
+            showCustomAlert('Error', 'Failed to submit rating. Please try again.');
+        }
     }
 }
 
+/**
+ * Opens the product rating modal.
+ */
 function openRatingModal() {
     selectedRating = 0; // Reset selected rating
     updateRatingStars(); // Update stars to reflect reset
     ratingModal.classList.add('active'); // Use class for animation
 }
 
+/**
+ * Closes the product rating modal.
+ */
 function closeRatingModal() {
     ratingModal.classList.remove('active');
 }
 
-
-// --- Authentication Functions ---
-async function handleLogin() {
-    const { email, password } = await showCustomAlert('Login', 'Please enter your email and password:', true, true);
-
-    if (email && password) {
-        try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-            showCustomAlert('Login Successful', `Welcome, ${user.email}!`);
-            if (user.email === 'Hina@admin.com' && password === 'School123&') {
-                // Admin login, directly navigate to admin.html
-                window.location.href = 'admin.html';
-            }
-            // onAuthStateChanged listener will handle UI updates for regular users
-        } catch (error) {
-            console.error("Login error:", error.code, error.message);
-            let errorMessage = "Failed to log in. Please check your credentials.";
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                errorMessage = "Invalid email or password.";
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = "Invalid email format.";
-            }
-            showCustomAlert('Login Failed', errorMessage);
-        }
-    } else {
-        showCustomAlert('Login Cancelled', 'Email and password are required for login.');
-    }
-}
-
-async function handleRegister() {
-    const { email, password } = await showCustomAlert('Register', 'Please enter your email and a password (min 6 characters):', true, true);
-
-    if (email && password) {
-        try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-            showCustomAlert('Registration Successful', `Account created for ${user.email}! You are now logged in.`);
-            // onAuthStateChanged listener will handle UI updates
-        } catch (error) {
-            console.error("Registration error:", error.code, error.message);
-            let errorMessage = "Failed to register. Please try again.";
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = "This email is already registered.";
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = "Invalid email format.";
-            } else if (error.code === 'auth/weak-password') {
-                errorMessage = "Password should be at least 6 characters.";
-            }
-            showCustomAlert('Registration Failed', errorMessage);
-        }
-    } else {
-        showCustomAlert('Registration Cancelled', 'Email and password are required for registration.');
-    }
-}
-
-async function handleLogout() {
-    const confirmLogout = await showCustomAlert('Confirm Logout', 'Are you sure you want to log out?', true);
-    if (confirmLogout) {
-        try {
-            await signOut(auth);
-            showCustomAlert('Logged Out', 'You have been successfully logged out.');
-            // onAuthStateChanged listener will handle UI updates
-        } catch (error) {
-            console.error("Logout error:", error);
-            showCustomAlert('Error', 'Failed to log out. Please try again.');
-        }
-    }
-}
 
 // --- Event Listeners ---
 closeModalBtn.addEventListener('click', () => {
@@ -535,90 +607,52 @@ searchInput.addEventListener('keypress', (event) => {
 placeOrderButton.addEventListener('click', placeOrder);
 
 toggleOrderHistoryBtn.addEventListener('click', () => {
-    if (orderHistorySection.style.display === 'block') {
-        orderHistorySection.style.display = 'none';
-        toggleOrderHistoryBtn.textContent = 'Show Order History';
-    } else {
-        orderHistorySection.style.display = 'block';
-        toggleOrderHistoryBtn.textContent = 'Hide Order History';
-        loadOrderHistory(); // Load when shown
-    }
-});
-
-
-// Rating star click handler
-if (ratingStarsContainer) {
-    ratingStarsContainer.addEventListener('click', (event) => {
-        const star = event.target.closest('.fa-star');
-        if (star) {
-            selectedRating = parseInt(star.dataset.rating);
-            updateRatingStars();
-        }
-    });
-}
-
-// Submit rating button
-if (submitRatingButton) {
-    submitRatingButton.addEventListener('click', submitProductRating);
-}
-
-// Close rating modal
-if (closeRatingModalBtn) {
-    closeRatingModalBtn.addEventListener('click', closeRatingModal);
-}
-window.addEventListener('click', (event) => {
-    if (event.target === ratingModal) {
-        closeRatingModal();
-    }
-});
-
-// Auth button event listeners
-loginButton.addEventListener('click', handleLogin);
-registerButton.addEventListener('click', handleRegister);
-logoutButton.addEventListener('click', handleLogout);
-
-// Open Code in Canvas button
-openCodeButton.addEventListener('click', async () => {
-    const response = await fetch('index.html');
-    const htmlContent = await response.text();
-    // This will open a new immersive with the HTML content
-    // The actual mechanism for "opening a new canvas" is handled by the environment.
-    // For demonstration, I'm providing the content here.
-    console.log("HTML content for new canvas:", htmlContent);
-    // In a real Canvas environment, you would use a specific API to create a new immersive.
-    // Since I cannot directly trigger that, I'm logging it and providing it in the response.
-});
-
-
-// --- Authentication State Listener ---
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        // User is signed in
-        loginButton.style.display = 'none';
-        registerButton.style.display = 'none'; // Hide register button when logged in
-        logoutButton.style.display = 'inline-block';
-        // Check if the logged-in user is the admin
-        if (user.email === 'Hina@admin.com') { // Use the specified admin email
-            adminLinkContainer.style.display = 'list-item'; // Show admin link
+    // Only toggle if user is logged in
+    if (auth.currentUser) {
+        if (orderHistorySection.style.display === 'block') {
+            orderHistorySection.style.display = 'none';
+            toggleOrderHistoryBtn.textContent = 'Show Order History';
         } else {
-            adminLinkContainer.style.display = 'none'; // Hide admin link for regular users
+            loadOrderHistory(); // Load/refresh history when showing
+            orderHistorySection.style.display = 'block';
+            toggleOrderHistoryBtn.textContent = 'Hide Order History';
         }
-        // Load user-specific data like order history
-        loadOrderHistory();
+    } else {
+        showCustomAlert('Login Required', 'Please log in to view your order history.');
+    }
+});
+
+// Event listener for rating stars
+ratingStarsContainer.addEventListener('click', (event) => {
+    const star = event.target.closest('.fa-star');
+    if (star) {
+        selectedRating = parseInt(star.dataset.rating);
+        updateRatingStars();
+    }
+});
+
+submitRatingButton.addEventListener('click', submitProductRating);
+closeRatingModalBtn.addEventListener('click', closeRatingModal);
+
+
+// --- Authentication State Listener (for index.html) ---
+onAuthStateChanged(auth, (user) => {
+    // This listener is primarily for showing/hiding order history and other user-specific elements
+    // Login/logout buttons are now handled dynamically via the custom modal for actions like placeOrder.
+    if (user) {
+        // User is signed in. Load user-specific data like order history.
+        // The display of Order History section is controlled by toggleOrderHistoryBtn click.
+        console.log("User logged in on public app:", user.email);
+        loadOrderHistory(); // Pre-load data, but section visibility is user-controlled
     } else {
         // User is signed out
-        loginButton.style.display = 'inline-block';
-        registerButton.style.display = 'inline-block'; // Show register button when logged out
-        logoutButton.style.display = 'none';
-        adminLinkContainer.style.display = 'none'; // Always hide admin link if not logged in
-        orderHistorySection.style.display = 'none'; // Hide order history
+        console.log("User logged out on public app.");
+        orderHistorySection.style.display = 'none'; // Ensure hidden if logged out
         toggleOrderHistoryBtn.textContent = 'Show Order History';
     }
 });
-
 
 // --- Initial Load ---
 document.addEventListener('DOMContentLoaded', () => {
     loadProducts(); // Initial load of products
-    // Firebase auth state listener handles initial data loading based on user status
 });
