@@ -3,236 +3,1001 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hina'sRoot&Bloom Admin Dashboard</title>
+    <title>Hina'sRoot&Bloom admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
-    <link rel="stylesheet" href="style.css"> <!-- Re-using general styles where applicable, or admin-specific styles -->
+    <style>
+        /* Color Variables */
+        :root {
+            --color-white: #FFFFFF;
+            --color-off-white: #F8F9FA; /* Lighter background */
+            --color-light-gray: #f1f3f5; /* Lighter background */
+            --color-medium-gray: #6c757d; /* Softer medium gray */
+            --color-dark-gray: #343a40;   /* Slightly softer dark gray */
+            --color-border-light: #dee2e6;
+            --color-border-medium: #ced4da;
+            --color-input-bg: #fdfdff; /* Slightly off-white for inputs */
+
+            --color-cyan-primary: #17a2b8; /* Adjusted Cyan */
+            --color-cyan-dark: #138496;   /* Darker Cyan for hover */
+            --color-cyan-light: #d1ecf1;  /* Lighter Cyan for subtle backgrounds/accents */
+
+            --color-pink-primary: #e83e8c; /* Adjusted Pink */
+            --color-pink-dark: #c62a7a;   /* Darker Pink for accents */
+            --color-pink-light: #f8d7da;  /* Lighter Pink */
+
+            --color-success-green: #28a745;
+            --color-warning-yellow: #ffc107;
+            --color-error-red: #dc3545;
+            --color-info-blue: #17a2b8;
+
+            --font-primary: 'Inter', sans-serif;
+            --border-radius-small: 6px;
+            --border-radius-medium: 10px;
+            --shadow-light: 0 2px 5px rgba(0, 0, 0, 0.08);
+            --shadow-medium: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* General Body and Typography */
+        body {
+            font-family: var(--font-primary);
+            margin: 0;
+            padding: 0;
+            background-color: var(--color-light-gray);
+            color: var(--color-dark-gray);
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4 {
+            color: var(--color-dark-gray);
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            border-left: 5px solid var(--color-cyan-primary);
+            padding-left: 15px;
+            margin-bottom: 25px;
+        }
+
+        h3 {
+            font-size: 1.75rem;
+            font-weight: 500;
+        }
+
+        p {
+            margin-bottom: 10px;
+        }
+
+        a {
+            color: var(--color-cyan-primary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--color-cyan-dark);
+        }
+
+        /* Header */
+        header {
+            background-color: var(--color-cyan-primary);
+            color: var(--color-white);
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: var(--shadow-medium);
+        }
+
+        header h1 {
+            color: var(--color-white);
+            margin-bottom: 10px;
+        }
+
+        .main-nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .main-nav a {
+            color: var(--color-white);
+            font-weight: 500;
+            padding: 8px 15px;
+            border-radius: var(--border-radius-small);
+            transition: background-color 0.3s ease;
+        }
+
+        .main-nav a:hover {
+            background-color: var(--color-cyan-dark);
+        }
+
+        /* Main Content Area */
+        main {
+            padding: 30px 20px;
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: var(--color-white);
+            border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-medium);
+        }
+
+        /* Section Styling */
+        section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background-color: var(--color-off-white);
+            border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-light);
+        }
+
+        .info-section {
+            background-color: var(--color-white); /* Lighter background for info sections */
+            border-left-color: var(--color-pink-primary); /* Pink accent for info sections */
+        }
+
+        /* Admin Specific Styles */
+        #auth-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 50vh; /* Ensure it takes up enough vertical space */
+            text-align: center;
+            background-color: var(--color-light-gray); /* Match body background */
+            padding: 20px;
+        }
+
+        .auth-form {
+            background-color: var(--color-white);
+            padding: 40px; /* Increased padding */
+            border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-medium);
+            width: 100%;
+            max-width: 450px; /* Slightly wider form */
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* Increased gap between elements */
+            border: 1px solid var(--color-border-light); /* Subtle border */
+        }
+
+        .auth-form h2 {
+            color: var(--color-cyan-primary);
+            margin-bottom: 25px;
+            font-size: 2.2rem;
+            border-left: none; /* Remove border for login form h2 */
+            padding-left: 0;
+        }
+
+        .auth-form label {
+            font-weight: 600;
+            color: var(--color-dark-gray);
+            text-align: left; /* Align labels to the left */
+            margin-bottom: -10px; /* Pull label closer to input */
+        }
+
+        .auth-form input[type="email"],
+        .auth-form input[type="password"] {
+            width: calc(100% - 24px); /* Account for padding */
+            padding: 14px; /* Increased padding */
+            border: 1px solid var(--color-border-medium);
+            border-radius: var(--border-radius-small);
+            font-size: 1.1rem; /* Larger font size */
+            background-color: var(--color-input-bg);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); /* Inner shadow */
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .auth-form input[type="email"]:focus,
+        .auth-form input[type="password"]:focus {
+            border-color: var(--color-cyan-primary);
+            box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.25); /* Focus glow */
+            outline: none;
+        }
+
+        .admin-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 25px; /* Larger padding for buttons */
+            border: none;
+            border-radius: var(--border-radius-small);
+            cursor: pointer;
+            font-size: 1.1rem; /* Larger font size for buttons */
+            font-weight: 600; /* Bolder text */
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.1s ease;
+            text-decoration: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-button.primary {
+            background-color: var(--color-cyan-primary);
+            color: var(--color-white);
+            background-image: linear-gradient(to right, var(--color-cyan-primary) 0%, var(--color-cyan-dark) 100%);
+        }
+
+        .admin-button.primary:hover {
+            background-color: var(--color-cyan-dark);
+            background-image: linear-gradient(to right, var(--color-cyan-dark) 0%, #008C9D 100%);
+            box-shadow: 0 4px 12px rgba(0, 188, 212, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .admin-button.error {
+            background-color: var(--color-error-red);
+            color: var(--color-white);
+            background-image: linear-gradient(to right, var(--color-error-red) 0%, #c82333 100%);
+        }
+
+        .admin-button.error:hover {
+            background-color: #c82333;
+            background-image: linear-gradient(to right, #c82333 0%, #bd2130 100%);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .admin-button.info {
+            background-color: var(--color-info-blue);
+            color: var(--color-white);
+            background-image: linear-gradient(to right, var(--color-info-blue) 0%, #138496 100%);
+        }
+
+        .admin-button.info:hover {
+            background-color: #138496;
+            background-image: linear-gradient(to right, #138496 0%, #0f6674 100%);
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .admin-button.secondary {
+            background-color: var(--color-medium-gray);
+            color: var(--color-white);
+            background-image: linear-gradient(to right, var(--color-medium-gray) 0%, #5a6268 100%);
+        }
+
+        .admin-button.secondary:hover {
+            background-color: #5a6268;
+            background-image: linear-gradient(to right, #5a6268 0%, #4e555b 100%);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .admin-dashboard {
+            display: none; /* Hidden by default, shown after login */
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .dashboard-card {
+            background-color: var(--color-white);
+            padding: 25px;
+            border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-light);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dashboard-card h3 {
+            color: var(--color-cyan-dark);
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .dashboard-card .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--color-pink-primary);
+            margin-bottom: 15px;
+        }
+
+        .dashboard-card .metric-description {
+            font-size: 0.9rem;
+            color: var(--color-medium-gray);
+        }
+
+        /* Product Management Section */
+        .product-management-section h2 {
+            border-left-color: var(--color-pink-primary);
+        }
+
+        .product-form, .edit-product-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+            background-color: var(--color-off-white);
+            border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-light);
+        }
+
+        .product-form label, .edit-product-form label {
+            font-weight: 500;
+            color: var(--color-dark-gray);
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .product-form input[type="text"],
+        .product-form input[type="number"],
+        .product-form textarea,
+        .product-form select,
+        .edit-product-form input[type="text"],
+        .edit-product-form input[type="number"],
+        .edit-product-form textarea,
+        .edit-product-form select {
+            width: calc(100% - 24px);
+            padding: 12px;
+            border: 1px solid var(--color-border-medium);
+            border-radius: var(--border-radius-small);
+            font-size: 1rem;
+            background-color: var(--color-input-bg);
+        }
+
+        .product-form textarea, .edit-product-form textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .product-image-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .product-image-input-group input[type="file"] {
+            padding: 10px 0;
+            background-color: transparent;
+            border: none;
+        }
+
+        .image-preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .image-preview {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border: 1px solid var(--color-border-light);
+            border-radius: var(--border-radius-small);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .remove-image-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: var(--color-error-red);
+            color: var(--color-white);
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+        }
+
+        .remove-image-btn:hover {
+            opacity: 1;
+        }
+
+        .product-list {
+            margin-top: 30px;
+        }
+
+        .product-list-item {
+            background-color: var(--color-white);
+            border: 1px solid var(--color-border-light);
+            border-radius: var(--border-radius-medium);
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+
+        .product-list-item .product-info {
+            flex-grow: 1;
+        }
+
+        .product-list-item .product-info h4 {
+            margin-bottom: 5px;
+            color: var(--color-cyan-dark);
+        }
+
+        .product-list-item .product-info p {
+            font-size: 0.9rem;
+            color: var(--color-medium-gray);
+            margin-bottom: 3px;
+        }
+
+        .product-list-item .product-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Order Management Section */
+        .order-management-section h2 {
+            border-left-color: var(--color-success-green);
+        }
+
+        .order-list-item {
+            background-color: var(--color-white);
+            border: 1px solid var(--color-border-light);
+            border-radius: var(--border-radius-medium);
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+
+        .order-list-item .order-info {
+            flex-grow: 1;
+        }
+
+        .order-list-item .order-info h4 {
+            margin-bottom: 5px;
+            color: var(--color-success-green);
+        }
+
+        .order-list-item .order-info p {
+            font-size: 0.9rem;
+            color: var(--color-medium-gray);
+            margin-bottom: 3px;
+        }
+
+        .order-list-item .order-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .order-status-select {
+            padding: 8px 12px;
+            border: 1px solid var(--color-border-medium);
+            border-radius: var(--border-radius-small);
+            background-color: var(--color-input-bg);
+            font-size: 0.9rem;
+        }
+
+        /* Analytics Section */
+        .analytics-section h2 {
+            border-left-color: var(--color-warning-yellow);
+        }
+
+        .analytics-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .analytics-controls select {
+            padding: 10px 15px;
+            border: 1px solid var(--color-border-medium);
+            border-radius: var(--border-radius-small);
+            font-size: 0.9rem;
+            background-color: var(--color-input-bg);
+            cursor: pointer;
+        }
+
+        .analytics-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background-color: var(--color-white);
+            padding: 20px;
+            border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-light);
+            text-align: center;
+        }
+
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-cyan-dark);
+            margin-bottom: 5px;
+        }
+
+        .summary-card .label {
+            font-size: 0.9rem;
+            color: var(--color-medium-gray);
+        }
+
+        .winner-of-week {
+            background-color: var(--color-pink-light);
+            border: 2px dashed var(--color-pink-primary);
+            padding: 20px;
+            border-radius: var(--border-radius-medium);
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .winner-of-week h3 {
+            color: var(--color-pink-dark);
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .winner-of-week .winner-info p {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .winner-of-week .product-name {
+            font-weight: bold;
+            color: var(--color-pink-primary);
+            font-size: 1.2rem;
+        }
+
+        .winner-of-week .rating-info {
+            font-style: italic;
+            color: var(--color-medium-gray);
+        }
+
+        .product-comparison-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: var(--color-off-white);
+            border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-light);
+        }
+
+        .product-comparison-section h3 {
+            border-left-color: var(--color-success-green);
+        }
+
+        .product-select-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .product-select-container select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid var(--color-border-medium);
+            border-radius: var(--border-radius-small);
+            font-size: 1rem;
+            background-color: var(--color-input-bg);
+        }
+
+        .compare-button {
+            background-color: var(--color-info-blue);
+            color: var(--color-white);
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--border-radius-small);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .compare-button:hover {
+            background-color: #138496;
+            box-shadow: 0 4px 10px rgba(23, 162, 184, 0.3);
+        }
+
+        .comparison-chart-container {
+            margin-top: 20px;
+            background-color: var(--color-white);
+            padding: 15px;
+            border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-light);
+        }
+
+        /* iframe container for admin.html */
+        .iframe-container {
+            margin-top: 40px;
+            border: 1px solid var(--color-border-medium);
+            border-radius: var(--border-radius-medium);
+            overflow: hidden;
+            box-shadow: var(--shadow-medium);
+            height: 80vh; /* Adjust as needed */
+            width: 100%;
+            display: none; /* Hidden by default, only for development reference */
+        }
+
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Footer */
+        .app-footer {
+            background-color: var(--color-dark-gray);
+            color: var(--color-light-gray);
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 40px;
+            font-size: 0.9rem;
+        }
+
+        .app-footer p {
+            margin: 5px 0;
+        }
+
+        /* Custom Alert/Confirm Modal */
+        .custom-modal-overlay {
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .custom-modal-content {
+            background-color: var(--color-white);
+            padding: 30px;
+            border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-medium);
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+            text-align: center;
+            animation: fadeInScale 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .custom-modal-content h4 {
+            color: var(--color-cyan-primary);
+            margin-bottom: 10px;
+        }
+
+        .custom-modal-content p {
+            margin-bottom: 20px;
+        }
+
+        .custom-modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .custom-modal-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--border-radius-small);
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .custom-modal-button.primary {
+            background-color: var(--color-cyan-primary);
+            color: var(--color-white);
+        }
+
+        .custom-modal-button.primary:hover {
+            background-color: var(--color-cyan-dark);
+        }
+
+        .custom-modal-button.secondary {
+            background-color: var(--color-medium-gray);
+            color: var(--color-white);
+        }
+
+        .custom-modal-button.secondary:hover {
+            background-color: #5a6268; /* Darken on hover */
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.75rem;
+            }
+
+            .main-nav ul {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            main {
+                padding: 20px 15px;
+                margin: 15px auto;
+            }
+
+            .auth-form {
+                padding: 30px;
+                gap: 15px;
+            }
+
+            .auth-form h2 {
+                font-size: 1.8rem;
+            }
+
+            .auth-form input {
+                font-size: 1rem;
+                padding: 12px;
+            }
+
+            .admin-button {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .product-list-item, .order-list-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .product-list-item .product-actions,
+            .order-list-item .order-actions {
+                width: 100%;
+                justify-content: flex-end;
+                margin-top: 10px;
+            }
+
+            .analytics-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .analytics-summary {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .auth-form {
+                padding: 20px;
+            }
+
+            .admin-button {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <header class="app-header">
-        <div class="header-content">
-            <a href="index.html" class="logo-link">
-                <img src="Hina’s Root&Bloom.png" alt="Hina's Root & Bloom Logo" class="app-logo">
-                <h1>Hina's Root & Bloom Admin</h1>
-            </a>
-            <nav class="main-nav">
-                <ul>
-                    <li><a href="#" id="admin-logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-                </ul>
-            </nav>
-        </div>
+    <header>
+        <h1>Hina'sRoot&Bloom Admin Panel</h1>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="#" id="logout-button"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </nav>
     </header>
 
-    <main class="app-main">
-        <!-- Admin Login Section -->
-        <section class="auth-section" id="admin-auth-section">
-            <div class="auth-forms">
-                <div class="auth-form" id="admin-login-form">
-                    <h2>Admin Login</h2>
-                    <input type="email" id="admin-login-email" placeholder="Admin Email">
-                    <input type="password" id="admin-login-password" placeholder="Admin Password">
-                    <button id="admin-login-btn" class="button primary">Login</button>
-                    <p id="admin-error-message" style="color: var(--color-error-red); margin-top: 10px;"></p>
-                </div>
+    <main>
+        <section id="auth-section">
+            <h2>Admin Login</h2>
+            <div class="auth-form">
+                <label for="admin-email">Email:</label>
+                <input type="email" id="admin-email" placeholder="Enter admin email">
+                <label for="admin-password">Password:</label>
+                <input type="password" id="admin-password" placeholder="Enter admin password">
+                <button id="login-button" class="admin-button primary"><i class="fas fa-sign-in-alt"></i> Login</button>
             </div>
         </section>
 
-        <!-- Admin Dashboard Section -->
-        <section class="admin-dashboard-section" id="admin-dashboard-section" style="display: none;">
-            <div class="admin-dashboard-tabs">
-                <button class="tab-button active" data-tab="products"><i class="fas fa-box"></i> Products</button>
-                <button class="tab-button" data-tab="orders"><i class="fas fa-clipboard-list"></i> Orders</button>
-                <button class="tab-button" data-tab="ratings"><i class="fas fa-star"></i> Ratings</button>
-                <button class="tab-button" data-tab="categories"><i class="fas fa-tags"></i> Categories</button>
-                <button class="tab-button" data-tab="analytics"><i class="fas fa-chart-pie"></i> Analytics</button>
-                <button class="tab-button" data-tab="support-iframe"><i class="fas fa-life-ring"></i> Support App</button>
+        <section id="admin-dashboard" class="admin-dashboard">
+            <h2>Dashboard Overview</h2>
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3>Total Products</h3>
+                    <p id="total-products-metric" class="metric-value">0</p>
+                    <p class="metric-description">Currently listed products</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Total Orders</h3>
+                    <p id="total-orders-metric" class="metric-value">0</p>
+                    <p class="metric-description">All time orders</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Pending Orders</h3>
+                    <p id="pending-orders-metric" class="metric-value">0</p>
+                    <p class="metric-description">Orders awaiting processing</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Total Revenue</h3>
+                    <p id="total-revenue-metric" class="metric-value">PKR 0</p>
+                    <p class="metric-description">Estimated total sales</p>
+                </div>
             </div>
 
-            <div id="products-tab" class="tab-content active">
+            <section class="product-management-section">
                 <h2>Product Management</h2>
-                <button id="add-product-btn" class="admin-button primary"><i class="fas fa-plus"></i> Add New Product</button>
+                <h3>Add New Product</h3>
+                <div class="product-form">
+                    <label for="product-title">Product Title:</label>
+                    <input type="text" id="product-title" placeholder="e.g., Organic Herbal Shampoo">
 
-                <!-- Product Form (Add/Edit) Modal -->
-                <div class="modal-overlay" id="product-modal">
-                    <div class="modal-content">
-                        <span class="close-button" id="close-product-modal">&times;</span>
-                        <h3><span id="product-modal-title">Add New Product</span></h3>
-                        <input type="hidden" id="product-id">
-                        <input type="text" id="product-title" placeholder="Product Title" required>
-                        <textarea id="product-description" placeholder="Product Description" required></textarea>
-                        <input type="number" id="product-price" placeholder="Price" step="0.01" required>
-                        <input type="number" id="product-stock" placeholder="Stock Quantity" required>
-                        <input type="text" id="product-brand" placeholder="Brand" required>
-                        <select id="product-category-select" required>
-                            <option value="">Select Category</option>
-                            <!-- Categories will be populated here by JavaScript -->
-                        </select>
-                        <input type="url" id="product-image-url" placeholder="Image URL (direct link)">
-                        <input type="url" id="product-video-url" placeholder="Video URL (YouTube/Vimeo embed link)">
-                        <input type="file" id="product-image-upload" accept="image/*">
-                        <img id="product-image-preview" src="" alt="Image Preview" style="max-width: 100px; max-height: 100px; display: none;">
-                        <button id="save-product-btn" class="admin-button primary">Save Product</button>
+                    <label for="product-description">Description:</label>
+                    <textarea id="product-description" placeholder="Detailed description of the product..."></textarea>
+
+                    <label for="product-price">Price (PKR):</label>
+                    <input type="number" id="product-price" placeholder="e.g., 1500" min="0" step="0.01">
+
+                    <label for="product-stock">Stock Quantity:</label>
+                    <input type="number" id="product-stock" placeholder="e.g., 100" min="0">
+
+                    <label for="product-brand">Brand:</label>
+                    <input type="text" id="product-brand" placeholder="e.g., Hina's Organics">
+
+                    <label for="product-category">Category:</label>
+                    <select id="product-category">
+                        <option value="">Select a Category</option>
+                        <option value="Fabric">Fabric</option>
+                        <option value="Organic">Organic</option>
+                        <option value="Other Brands">Other Brands</option>
+                        <option value="Other Products">Other Products</option>
+                        <option value="Perfumes">Perfumes</option>
+                        <option value="Tools">Tools</option>
+                        <option value="electronics">Electronics</option>
+                        <option value="clothing">Clothing</option>
+                        <option value="books">Books</option>
+                        <option value="home">Home & Kitchen</option>
+                        <option value="beauty">Beauty</option>
+                        <option value="toys">Toys</option>
+                        <option value="sports">Sports</option>
+                    </select>
+
+                    <label>Product Images (up to 5):</label>
+                    <div class="product-image-input-group">
+                        <input type="file" id="product-image-1" accept="image/*">
+                        <input type="file" id="product-image-2" accept="image/*">
+                        <input type="file" id="product-image-3" accept="image/*">
+                        <input type="file" id="product-image-4" accept="image/*">
+                        <input type="file" id="product-image-5" accept="image/*">
                     </div>
+                    <div id="image-preview-container" class="image-preview-container"></div>
+
+                    <label for="product-video-url">Product Video URL (Optional):</label>
+                    <input type="text" id="product-video-url" placeholder="e.g., https://www.youtube.com/watch?v=yourvideo">
+
+                    <label for="product-featured">Featured Product:</label>
+                    <input type="checkbox" id="product-featured">
+
+                    <button id="add-product-button" class="admin-button primary"><i class="fas fa-plus-circle"></i> Add Product</button>
                 </div>
 
-                <!-- Product List -->
-                <div class="filter-sort-section">
-                    <input type="text" id="product-search-input" placeholder="Search products...">
-                    <select id="product-category-filter">
-                        <option value="all">All Categories</option>
-                        <!-- Categories will be populated here by JavaScript -->
-                    </select>
-                    <select id="product-sort-select">
-                        <option value="name-asc">Name (A-Z)</option>
-                        <option value="name-desc">Name (Z-A)</option>
-                        <option value="price-asc">Price (Low to High)</option>
-                        <option value="price-desc">Price (High to Low)</option>
-                        <option value="stock-asc">Stock (Low to High)</option>
-                        <option value="stock-desc">Stock (High to Low)</option>
-                    </select>
+                <h3>Existing Products</h3>
+                <div class="product-list" id="product-list">
+                    <p>No products added yet.</p>
                 </div>
-                <div class="table-container">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Image</th>
-                                <th>Title</th>
-                                <th>Category</th>
-                                <th>Price</th>
-                                <th>Stock</th>
-                                <th>Rating</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="product-list">
-                            <!-- Products will be loaded here by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            </section>
 
-            <div id="orders-tab" class="tab-content">
+            <section class="order-management-section">
                 <h2>Order Management</h2>
-                <div class="filter-sort-section">
-                    <input type="text" id="order-search-input" placeholder="Search orders...">
-                    <select id="order-status-filter">
-                        <option value="all">All Statuses</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Processing">Processing</option>
-                        <option value="Shipped">Shipped</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
+                <div class="order-list" id="order-list">
+                    <p>No orders received yet.</p>
+                </div>
+            </section>
+
+            <section class="analytics-section">
+                <h2>Sales & Product Analytics</h2>
+                <div class="analytics-controls">
+                    <label for="analytics-timeframe">Timeframe:</label>
+                    <select id="analytics-timeframe">
+                        <option value="all">All Time</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
                     </select>
                 </div>
-                <div class="table-container">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Order ID</th>
-                                <th>Customer Name</th>
-                                <th>Total</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="order-list">
-                            <!-- Orders will be loaded here by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
-            <div id="ratings-tab" class="tab-content">
-                <h2>Customer Ratings</h2>
-                <div class="table-container">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>User</th>
-                                <th>Rating</th>
-                                <th>Comment</th>
-                                <th>Date</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="rating-list">
-                            <!-- Ratings will be loaded here by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="categories-tab" class="tab-content">
-                <h2>Category Management</h2>
-                <div class="admin-card">
-                    <h3>Add New Category</h3>
-                    <input type="text" id="category-name-input" placeholder="New Category Name" required>
-                    <button id="add-category-btn" class="admin-button primary"><i class="fas fa-plus"></i> Add Category</button>
-                </div>
-                <div class="admin-card" style="margin-top: 20px;">
-                    <h3>Manage Existing Categories</h3>
-                    <select id="manage-category-select">
-                        <option value="">Select Category to Manage</option>
-                        <!-- Categories will be populated here -->
-                    </select>
-                    <input type="text" id="edit-category-name-input" placeholder="Edit Category Name" disabled>
-                    <button id="update-category-btn" class="admin-button secondary" disabled><i class="fas fa-edit"></i> Update Name</button>
-                    <button id="delete-category-btn" class="admin-button danger" disabled><i class="fas fa-trash-alt"></i> Delete Category</button>
-                </div>
-                <div class="admin-card" style="margin-top: 20px;">
-                    <h3>All Categories List</h3>
-                    <ul id="category-list-display">
-                        <!-- Categories will be displayed here -->
-                    </ul>
-                </div>
-            </div>
-
-            <div id="analytics-tab" class="tab-content">
-                <h2>Analytics</h2>
-                <div class="analytics-charts">
-                    <div class="chart-card">
-                        <h3>Orders Over Time</h3>
-                        <canvas id="ordersChart"></canvas>
+                <div class="analytics-summary">
+                    <div class="summary-card">
+                        <p class="value" id="total-sales-summary">0</p>
+                        <p class="label">Total Sales (PKR)</p>
                     </div>
-                    <div class="chart-card">
-                        <h3>Sales by Category</h3>
-                        <canvas id="salesByCategoryChart"></canvas>
+                    <div class="summary-card">
+                        <p class="value" id="total-orders-summary">0</p>
+                        <p class="label">Total Orders</p>
                     </div>
-                    <div class="chart-card">
-                        <h3>Product Comparison</h3>
-                        <div class="compare-controls">
-                            <div class="input-group">
-                                <label for="compare-product-1">Select Product 1:</label>
-                                <select id="compare-product-1"></select>
-                            </div>
-                            <div class="input-group">
-                                <label for="compare-product-2">Select Product 2:</label>
-                                <select id="compare-product-2"></select>
-                            </div>
-                            <button id="compare-products-btn" class="admin-button primary compare-button"><i class="fas fa-chart-line"></i> Compare</button>
-                        </div>
-                        <div class="comparison-chart-container">
-                            <canvas id="productComparisonChart"></canvas>
-                        </div>
+                    <div class="summary-card">
+                        <p class="value" id="avg-rating-summary">N/A</p>
+                        <p class="label">Average Product Rating</p>
                     </div>
                 </div>
-            </div>
 
-            <div id="support-iframe-tab" class="tab-content">
-                <h2>Support App</h2>
-                <div class="iframe-container">
-                    <!-- Ensure the iframe src is correct and authorized in Firebase OAuth settings -->
-                    <iframe src="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/admin.html" title="SHJR Support App Admin"></iframe>
+                <div class="winner-of-week">
+                    <h3>Top Product of the Timeframe:</h3>
+                    <div class="winner-info">
+                        <p>Product: <span class="product-name" id="winner-product-name">N/A</span></p>
+                        <p class="rating-info" id="winner-rating-info">No data for selected timeframe.</p>
+                        <p class="orders-info" id="winner-orders-info">Orders: N/A</p>
+                    </div>
+                </div>
+
+                <div class="product-comparison-section">
+                    <h3>Product Comparison</h3>
+                    <div class="product-select-container">
+                        <label for="compare-product-1">Select Product 1:</label>
+                        <select id="compare-product-1"></select>
+                    </div>
+                    <div class="product-select-container">
+                        <label for="compare-product-2">Select Product 2:</label>
+                        <select id="compare-product-2"></select>
+                    </div>
+                    <button id="compare-products-btn" class="admin-button primary compare-button"><i class="fas fa-chart-line"></i> Compare</button>
+                    <div class="comparison-chart-container">
+                        <canvas id="productComparisonChart"></canvas>
+                    </div>
                 </div>
             </div>
 
         </section>
     </main>
 
-    <!-- Custom Alert/Confirm Modals -->
+    <div class="iframe-container">
+        <iframe src="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/admin.html" title="SHJR Support App Admin"></iframe>
+    </div>
+
     <div id="custom-alert-modal" class="custom-modal-overlay">
         <div class="custom-modal-content">
             <h4 id="custom-modal-title"></h4>
