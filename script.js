@@ -14,8 +14,8 @@ const firebaseConfig = {
   projectId: "hina-s-rootandbloomstore",
   storageBucket: "hina-s-rootandbloomstore.firebasestorage.app",
   messagingSenderId: "967448486557",
-  appId: "1:967448486557:web:45a1fe8a4b14ec2fd22a74",
-  measurementId: "G-TT31HC3NZ3"
+  appId: "1:967448486557:web:fb730596395b0986701b3b",
+  measurementId: "G-9D72L3W4Z6"
 };
 
 // Initialize Firebase
@@ -23,595 +23,496 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const database = getDatabase(app);
-const storage = getStorage(app);
 
-// Public UI Elements
-const productListingsContainer = document.getElementById('product-listings');
+// --- DOM Elements ---
+const productList = document.getElementById('product-list');
+const categoryFilters = document.getElementById('category-filters');
+const sortSelect = document.getElementById('sort-select');
 const searchInput = document.getElementById('search-input');
 const searchButton = document.getElementById('search-button');
-const categoryFilterButtons = document.querySelectorAll('.category-button'); // For desktop filter buttons
-const sortBySelect = document.getElementById('sort-by-select');
-const productModal = document.getElementById('product-modal');
-const closeModalButton = document.querySelector('.close-button');
+
+// Modals and Buttons
+const productDetailsModal = document.getElementById('product-details-modal');
+const closeModalBtn = document.getElementById('close-modal-btn');
 const modalProductImage = document.getElementById('modal-product-image');
 const modalProductTitle = document.getElementById('modal-product-title');
+const modalProductCategory = document.getElementById('modal-product-category');
 const modalProductPrice = document.getElementById('modal-product-price');
 const modalProductDescription = document.getElementById('modal-product-description');
-const modalProductBrand = document.getElementById('modal-product-brand');
-const modalProductCategory = document.getElementById('modal-product-category');
-const modalProductStock = document.getElementById('modal-product-stock');
 const modalProductVideo = document.getElementById('modal-product-video');
-const productQuantityInput = document.getElementById('product-quantity');
-const addToCartButton = document.getElementById('add-to-cart-button');
 const placeOrderButton = document.getElementById('place-order-button');
+const toggleOrderHistoryBtn = document.getElementById('toggle-order-history-btn');
 const orderHistorySection = document.getElementById('order-history-section');
 const orderHistoryList = document.getElementById('order-history-list');
-const toggleOrderHistoryBtn = document.getElementById('toggle-order-history-btn');
-const ratingModal = document.getElementById('rating-modal');
-const closeRatingModalBtn = document.querySelector('.close-rating-modal-button');
-const ratingProductTitle = document.getElementById('rating-product-title');
-const ratingStarsContainer = document.getElementById('rating-stars-container');
-const submitRatingButton = document.getElementById('submit-rating-button');
 
-// Custom Alert/Confirm Elements
+// Auth elements
+const loginButton = document.getElementById('login-button');
+const logoutButton = document.getElementById('logout-button');
+const adminLinkContainer = document.getElementById('admin-link-container');
+
+// Custom Alert Modal elements
 const customAlertModal = document.getElementById('custom-alert-modal');
 const customModalTitle = document.getElementById('custom-modal-title');
 const customModalMessage = document.getElementById('custom-modal-message');
 const customModalOkBtn = document.getElementById('custom-modal-ok-btn');
 const customModalCancelBtn = document.getElementById('custom-modal-cancel-btn');
+const addressInput = document.getElementById('address-input');
+const phoneInput = document.getElementById('phone-input');
 
-let allProducts = {};
-let currentProductToRate = null; // Stores the product to be rated after an order
-let selectedRating = 0;
-let cart = {}; // Simple in-memory cart
+// Rating Modal Elements
+const ratingModal = document.getElementById('rating-modal');
+const closeRatingModalBtn = document.getElementById('close-rating-modal-btn');
+const ratingStarsContainer = document.getElementById('rating-stars-container');
+const submitRatingButton = document.getElementById('submit-rating-button');
 
-// --- Custom Alert/Confirm Functions ---
-function showAlert(message, title = 'Notification') {
-    return new Promise(resolve => {
+
+let allProducts = [];
+let currentProduct = null; // Stores the product currently viewed in the modal
+let selectedRating = 0; // To store the selected rating
+
+// --- Utility Functions ---
+
+function showCustomAlert(title, message, isConfirm = false) {
+    return new Promise((resolve) => {
         customModalTitle.textContent = title;
         customModalMessage.textContent = message;
-        customModalOkBtn.textContent = 'OK';
-        customModalOkBtn.classList.remove('danger', 'secondary');
-        customModalOkBtn.classList.add('primary');
-        customModalCancelBtn.style.display = 'none';
+        addressInput.style.display = 'none'; // Hide by default
+        phoneInput.style.display = 'none';   // Hide by default
+        customModalCancelBtn.style.display = isConfirm ? 'block' : 'none';
+
+        if (title === 'Place Order') {
+            addressInput.style.display = 'block';
+            phoneInput.style.display = 'block';
+            addressInput.value = ''; // Clear previous input
+            phoneInput.value = '';   // Clear previous input
+        }
+
         customAlertModal.style.display = 'flex';
 
-        const okHandler = () => {
+        const handleOk = () => {
             customAlertModal.style.display = 'none';
-            customModalOkBtn.removeEventListener('click', okHandler);
-            resolve(true);
+            customModalOkBtn.removeEventListener('click', handleOk);
+            customModalCancelBtn.removeEventListener('click', handleCancel);
+            if (title === 'Place Order') {
+                resolve({ address: addressInput.value, phone: phoneInput.value });
+            } else {
+                resolve(true);
+            }
         };
-        customModalOkBtn.addEventListener('click', okHandler);
-    });
-}
 
-function showConfirm(message, title = 'Confirm Action', okButtonText = 'Yes', cancelButtonText = 'No', okButtonClass = 'primary') {
-    return new Promise(resolve => {
-        customModalTitle.textContent = title;
-        customModalMessage.textContent = message;
-        customModalOkBtn.textContent = okButtonText;
-        customModalOkBtn.classList.remove('primary', 'secondary', 'danger');
-        customModalOkBtn.classList.add(okButtonClass);
-        customModalCancelBtn.textContent = cancelButtonText;
-        customModalCancelBtn.style.display = 'inline-block';
-        customAlertModal.style.display = 'flex';
-
-        const okHandler = () => {
+        const handleCancel = () => {
             customAlertModal.style.display = 'none';
-            customModalOkBtn.removeEventListener('click', okHandler);
-            customModalCancelBtn.removeEventListener('click', cancelHandler);
-            resolve(true);
-        };
-        const cancelHandler = () => {
-            customAlertModal.style.display = 'none';
-            customModalOkBtn.removeEventListener('click', okHandler);
-            customModalCancelBtn.removeEventListener('click', cancelHandler);
+            customModalOkBtn.removeEventListener('click', handleOk);
+            customModalCancelBtn.removeEventListener('click', handleCancel);
             resolve(false);
         };
-        customModalOkBtn.addEventListener('click', okHandler);
-        customModalCancelBtn.addEventListener('click', cancelHandler);
+
+        customModalOkBtn.addEventListener('click', handleOk);
+        if (isConfirm) {
+            customModalCancelBtn.addEventListener('click', handleCancel);
+        }
     });
 }
 
 
-// --- Firebase Authentication State Change ---
-onAuthStateChanged(auth, (user) => {
-    // This part is mostly for debugging or if you integrate admin login here
-    if (user) {
-        console.log("User is signed in:", user.email);
-        // Elements like 'auth-section' and 'admin-dashboard' are not in index.html
-        // so we add null checks to prevent errors.
-        const authSection = document.getElementById('auth-section');
-        const adminDashboard = document.getElementById('admin-dashboard');
-        if (authSection) {
-            authSection.style.display = 'none';
-        }
-        if (adminDashboard) {
-            adminDashboard.style.display = 'block';
-        }
-    } else {
-        console.log("User is signed out.");
-        const authSection = document.getElementById('auth-section');
-        const adminDashboard = document.getElementById('admin-dashboard');
-        if (authSection) {
-            authSection.style.display = 'block';
-        }
-        if (adminDashboard) {
-            adminDashboard.style.display = 'none';
-        }
-    }
-    loadProducts(); // Load products regardless of auth state for public view
-});
+// --- Product Display and Filtering ---
 
-// --- Product Listing Functions ---
-function displayProducts(products) {
-    productListingsContainer.innerHTML = '';
-    if (Object.keys(products).length === 0) {
-        productListingsContainer.innerHTML = '<p class="no-products">No products found.</p>';
+function displayProducts(productsToDisplay) {
+    productList.innerHTML = '';
+    if (productsToDisplay.length === 0) {
+        productList.innerHTML = '<p>No products found.</p>';
         return;
     }
-
-    Object.values(products).forEach(product => {
+    productsToDisplay.forEach(product => {
         const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.dataset.productId = product.id;
-
-        // Determine image URL with robust fallback
-        const imageUrl = product.imageUrls && Array.isArray(product.imageUrls) && product.imageUrls.length > 0
-                         ? product.imageUrls[0]
-                         : 'https://placehold.co/400x300/E9ECEF/495057?text=No+Image'; // Default placeholder image
-        
-        const videoHtml = product.videoUrl ? `<div class="product-video-thumbnail"><i class="fas fa-video"></i></div>` : '';
-
+        productCard.classList.add('product-card');
         productCard.innerHTML = `
-            <div class="product-image-container">
-                <img src="${imageUrl}" alt="${product.title}" class="product-image" onerror="this.onerror=null;this.src='https://placehold.co/400x300/E9ECEF/495057?text=Image+Error';">
-                ${videoHtml}
+            <img src="${product.imageUrl}" alt="${product.title}">
+            <h3>${product.title}</h3>
+            <p class="category">${product.category}</p>
+            <p class="price">$${product.price.toFixed(2)}</p>
+            <div class="product-card-actions">
+                <button class="view-details-btn" data-id="${product.id}">View Details</button>
             </div>
-            <h3 class="product-title">${product.title}</h3>
-            <p class="product-brand">${product.brand}</p>
-            <p class="product-price">PKR ${product.price.toLocaleString()}</p>
-            <button class="view-details-button admin-button primary" data-product-id="${product.id}"><i class="fas fa-info-circle"></i> View Details</button>
-            <button class="add-to-cart-card-button admin-button success" data-product-id="${product.id}"><i class="fas fa-shopping-cart"></i> Add to Cart</button>
+            <div class="product-rating">
+                ${generateStarRating(product.averageRating)}
+                <span>(${product.ratingCount || 0})</span>
+            </div>
         `;
-        productListingsContainer.appendChild(productCard);
+        productList.appendChild(productCard);
     });
 
-    document.querySelectorAll('.view-details-button').forEach(button => {
-        button.removeEventListener('click', openProductModal); // Avoid multiple listeners
-        button.addEventListener('click', openProductModal);
-    });
-    document.querySelectorAll('.add-to-cart-card-button').forEach(button => {
-        button.removeEventListener('click', addProductToCartFromCard); // Avoid multiple listeners
-        button.addEventListener('click', addProductToCartFromCard);
-    });
-}
-
-function loadProducts() {
-    const productsRef = ref(database, 'products/');
-    onValue(productsRef, (snapshot) => {
-        allProducts = {};
-        snapshot.forEach((childSnapshot) => {
-            const product = childSnapshot.val();
-            product.id = product.id || childSnapshot.key; // Ensure product has an ID
-            allProducts[product.id] = product;
+    document.querySelectorAll('.view-details-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const productId = event.target.dataset.id;
+            viewDetails(productId);
         });
-        filterAndSortProducts(); // Re-filter and display all products
-    }, (error) => {
-        console.error("Error loading products:", error);
-        showAlert("Failed to load products. Please try again later.", "Error");
     });
 }
 
-function filterAndSortProducts() {
-    let filteredProducts = Object.values(allProducts);
+function generateStarRating(averageRating) {
+    let starsHtml = '';
+    const roundedRating = Math.round(averageRating);
+    for (let i = 1; i <= 5; i++) {
+        if (i <= roundedRating) {
+            starsHtml += '<i class="fas fa-star filled"></i>';
+        } else {
+            starsHtml += '<i class="far fa-star"></i>';
+        }
+    }
+    return starsHtml;
+}
 
-    // Apply search filter
-    const searchTerm = searchInput.value.toLowerCase();
+
+function applyFiltersAndSort() {
+    let filteredProducts = [...allProducts];
+
+    // Category filter
+    const activeCategoryButton = categoryFilters.querySelector('.category-button.active');
+    const selectedCategory = activeCategoryButton ? activeCategoryButton.dataset.category : 'all';
+
+    if (selectedCategory !== 'all') {
+        filteredProducts = filteredProducts.filter(product => product.category === selectedCategory);
+    }
+
+    // Search filter
+    const searchTerm = searchInput.value.toLowerCase().trim();
     if (searchTerm) {
         filteredProducts = filteredProducts.filter(product =>
-            (product.title && product.title.toLowerCase().includes(searchTerm)) ||
-            (product.description && product.description.toLowerCase().includes(searchTerm)) ||
-            (product.brand && product.brand.toLowerCase().includes(searchTerm)) ||
-            (product.category && product.category.toLowerCase().includes(searchTerm))
+            product.title.toLowerCase().includes(searchTerm) ||
+            product.description.toLowerCase().includes(searchTerm) ||
+            product.category.toLowerCase().includes(searchTerm)
         );
     }
 
-    // Apply category filter
-    // Only consider desktop category buttons as sidebar is removed
-    let activeCategory = 'all';
-    const desktopActiveButton = document.querySelector('.filter-sort-section .category-button.active');
-    
-    if (desktopActiveButton) {
-        activeCategory = desktopActiveButton.dataset.category;
-    }
-
-    if (activeCategory !== 'all') {
-        filteredProducts = filteredProducts.filter(product => product.category === activeCategory);
-    }
-
-    // Apply sort order
-    const sortBy = sortBySelect.value;
-    if (sortBy === 'price-asc') {
-        filteredProducts.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price-desc') {
-        filteredProducts.sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'alpha-asc') {
-        filteredProducts.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    } else if (sortBy === 'alpha-desc') {
-        filteredProducts.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
-    } else if (sortBy === 'featured') {
-        filteredProducts.sort((a, b) => (b.featured || false) - (a.featured || false));
-    }
+    // Sort
+    const sortBy = sortSelect.value;
+    filteredProducts.sort((a, b) => {
+        if (sortBy === 'price-asc') {
+            return a.price - b.price;
+        } else if (sortBy === 'price-desc') {
+            return b.price - a.price;
+        } else if (sortBy === 'name-asc') {
+            return a.title.localeCompare(b.title);
+        } else if (sortBy === 'name-desc') {
+            return b.title.localeCompare(a.title);
+        }
+        return 0; // Default or no sort
+    });
 
     displayProducts(filteredProducts);
 }
 
-// --- Product Modal Functions ---
-function openProductModal(event) {
-    const productId = event.currentTarget.dataset.productId;
-    const product = allProducts[productId];
-
-    if (!product) {
-        showAlert("Product details not found.", "Error");
-        return;
-    }
-
-    // Determine image URL with robust fallback for modal
-    modalProductImage.src = product.imageUrls && Array.isArray(product.imageUrls) && product.imageUrls.length > 0
-                            ? product.imageUrls[0]
-                            : 'https://placehold.co/400x300/E9ECEF/495057?text=No+Image';
-    modalProductTitle.textContent = product.title;
-    modalProductPrice.textContent = `PKR ${product.price.toLocaleString()}`;
-    modalProductDescription.textContent = product.description;
-    modalProductBrand.textContent = `Brand: ${product.brand}`;
-    modalProductCategory.textContent = `Category: ${product.category}`;
-    modalProductStock.textContent = `Stock: ${product.stock > 0 ? product.stock : 'Out of Stock'}`;
-
-    if (product.videoUrl) {
-        modalProductVideo.innerHTML = `<p>Product Video:</p><iframe src="${product.videoUrl}" frameborder="0" allowfullscreen></iframe>`;
-        modalProductVideo.style.display = 'block';
-    } else {
-        modalProductVideo.innerHTML = '';
-        modalProductVideo.style.display = 'none';
-    }
-
-    productQuantityInput.value = 1; // Reset quantity
-    addToCartButton.dataset.productId = productId;
-    placeOrderButton.dataset.productId = productId;
-
-    productModal.style.display = 'flex'; // Show modal
+function loadProducts() {
+    const productsRef = ref(database, 'products');
+    onValue(productsRef, (snapshot) => {
+        const productsData = snapshot.val();
+        allProducts = [];
+        for (let id in productsData) {
+            const product = { id, ...productsData[id] };
+            // Calculate average rating and count
+            let totalRating = 0;
+            let ratingCount = 0;
+            if (product.ratings) {
+                for (let userId in product.ratings) {
+                    totalRating += product.ratings[userId];
+                    ratingCount++;
+                }
+            }
+            product.averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
+            product.ratingCount = ratingCount;
+            allProducts.push(product);
+        }
+        populateCategories();
+        applyFiltersAndSort(); // Apply filters and sort after products are loaded
+    });
 }
 
-function closeProductModal() {
-    productModal.style.display = 'none'; // Hide modal
-    modalProductVideo.innerHTML = ''; // Clear video iframe
-}
-
-// --- Cart and Order Functions ---
-function addProductToCartFromCard(event) {
-    const productId = event.currentTarget.dataset.productId;
-    const product = allProducts[productId];
-
-    if (!product) {
-        showAlert("Product not found.", "Error");
-        return;
-    }
-
-    if (product.stock <= 0) {
-        showAlert("This product is currently out of stock.", "Out of Stock");
-        return;
-    }
-
-    const quantity = 1; // Always add 1 from card button
-    if (cart[productId]) {
-        cart[productId].quantity += quantity;
-    } else {
-        cart[productId] = { ...product, quantity };
-    }
-    showAlert(`${quantity} x ${product.title} added to cart!`, "Added to Cart");
-    console.log("Current Cart:", cart);
+function populateCategories() {
+    const categoriesRef = ref(database, 'categories');
+    onValue(categoriesRef, (snapshot) => {
+        const categoriesData = snapshot.val();
+        categoryFilters.innerHTML = '<button class="category-button active" data-category="all">All</button>'; // Reset
+        for (let categoryId in categoriesData) {
+            const categoryName = categoriesData[categoryId].name;
+            const button = document.createElement('button');
+            button.classList.add('category-button');
+            button.dataset.category = categoryName;
+            button.textContent = categoryName;
+            categoryFilters.appendChild(button);
+        }
+    });
 }
 
 
-async function addProductToCartFromModal() {
-    const productId = addToCartButton.dataset.productId;
-    const product = allProducts[productId];
-    const quantity = parseInt(productQuantityInput.value);
+function viewDetails(productId) {
+    currentProduct = allProducts.find(p => p.id === productId);
+    if (currentProduct) {
+        modalProductImage.src = currentProduct.imageUrl;
+        modalProductTitle.textContent = currentProduct.title;
+        modalProductCategory.textContent = `Category: ${currentProduct.category}`;
+        modalProductPrice.textContent = `Price: $${currentProduct.price.toFixed(2)}`;
+        modalProductDescription.textContent = currentProduct.description;
 
-    if (!product) {
-        showAlert("Product not found.", "Error");
-        return;
-    }
-    if (isNaN(quantity) || quantity <= 0) {
-        showAlert("Please enter a valid quantity.", "Invalid Quantity");
-        return;
-    }
-    if (quantity > product.stock) {
-        showAlert(`Only ${product.stock} units of ${product.title} are available.`, "Out of Stock");
-        return;
-    }
+        if (currentProduct.videoUrl) {
+            modalProductVideo.style.display = 'block';
+            modalProductVideo.querySelector('iframe').src = currentProduct.videoUrl;
+        } else {
+            modalProductVideo.style.display = 'none';
+            modalProductVideo.querySelector('iframe').src = '';
+        }
 
-    if (cart[productId]) {
-        cart[productId].quantity += quantity;
-    } else {
-        cart[productId] = { ...product, quantity };
+        productDetailsModal.style.display = 'block';
     }
-    showAlert(`${quantity} x ${product.title} added to cart!`, "Added to Cart");
-    console.log("Current Cart:", cart);
-    closeProductModal();
 }
 
 async function placeOrder() {
-    const productId = placeOrderButton.dataset.productId;
-    const product = allProducts[productId];
-    const quantity = parseInt(productQuantityInput.value);
-
-    if (!product) {
-        showAlert("Product not found for order.", "Error");
-        return;
-    }
-    if (isNaN(quantity) || quantity <= 0) {
-        showAlert("Please enter a valid quantity for your order.", "Invalid Quantity");
-        return;
-    }
-    if (quantity > product.stock) {
-        showAlert(`Cannot order ${quantity} units. Only ${product.stock} units of ${product.title} are available.`, "Insufficient Stock");
+    if (!currentProduct) {
+        showCustomAlert('Error', 'No product selected for order.');
         return;
     }
 
-    const confirmOrder = await showConfirm(`Do you want to place an order for ${quantity} x ${product.title} for PKR ${(product.price * quantity).toLocaleString()}?`, "Confirm Order");
-    if (!confirmOrder) {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+        showCustomAlert('Login Required', 'You must be logged in to place an order.');
         return;
     }
 
-    try {
-        // Create an order object
-        const orderData = {
-            productId: product.id,
-            productTitle: product.title,
-            quantity: quantity,
-            totalPrice: product.price * quantity,
-            orderDate: serverTimestamp(),
-            status: 'pending', // e.g., 'pending', 'completed', 'cancelled'
-            userId: auth.currentUser ? auth.currentUser.uid : 'guest', // Track user if logged in
-            userEmail: auth.currentUser ? auth.currentUser.email : 'guest',
-        };
+    const { address, phone } = await showCustomAlert('Place Order', 'Please enter your address and phone number:', true);
 
-        // Push to 'orders' node
-        const newOrderRef = push(ref(database, 'orders/'));
-        await set(newOrderRef, orderData);
-
-        // Deduct stock
-        const newStock = product.stock - quantity;
-        const productRef = ref(database, `products/${product.id}`);
-        await update(productRef, { stock: newStock });
-
-        showAlert(`Order for ${quantity} x ${product.title} placed successfully!`, "Order Confirmed");
-        
-        // --- Compulsory Rating after Order ---
-        closeProductModal(); // Close product modal first
-        // Set the product for rating and open the rating modal
-        currentProductToRate = {
-            id: product.id,
-            title: product.title
-        };
-        // Pass the event object to openRatingModal, even if it's a synthetic one
-        openRatingModal({ currentTarget: { dataset: { productId: product.id, productTitle: product.title } } });
-
-        loadProducts(); // Refresh product list to show updated stock
-    } catch (error) {
-        console.error("Error placing order:", error);
-        showAlert("Failed to place order. Please try again.", "Order Error");
+    if (address && phone) {
+        try {
+            const newOrderRef = push(ref(database, 'orders'));
+            await set(newOrderRef, {
+                userId: user.uid,
+                userName: user.email, // Or get user's display name if available
+                productId: currentProduct.id,
+                productTitle: currentProduct.title,
+                productPrice: currentProduct.price,
+                productImageUrl: currentProduct.imageUrl,
+                address: address,
+                phoneNumber: phone,
+                orderDate: serverTimestamp(),
+                status: 'Pending'
+            });
+            showCustomAlert('Order Placed!', 'Your order has been placed successfully.');
+            productDetailsModal.style.display = 'none'; // Close modal after order
+        } catch (error) {
+            console.error("Error placing order:", error);
+            showCustomAlert('Error', 'Failed to place order. Please try again.');
+        }
+    } else {
+        showCustomAlert('Order Cancelled', 'Address and phone number are required to place an order.');
     }
 }
 
-// --- Order History Functions ---
-function displayOrderHistory(orders) {
-    orderHistoryList.innerHTML = '';
-    if (Object.keys(orders).length === 0) {
-        orderHistoryList.innerHTML = '<p>No past orders found.</p>';
-        return;
-    }
-
-    Object.values(orders).sort((a, b) => b.orderDate - a.orderDate).forEach(order => {
-        const orderItem = document.createElement('div');
-        orderItem.className = 'order-item';
-        const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
-        orderItem.innerHTML = `
-            <p><strong>Order ID:</strong> ${order.orderId || 'N/A'}</p>
-            <p><strong>Product:</strong> ${order.productTitle}</p>
-            <p><strong>Quantity:</strong> ${order.quantity}</p>
-            <p><strong>Total Price:</strong> PKR ${order.totalPrice.toLocaleString()}</p>
-            <p><strong>Date:</strong> ${orderDate}</p>
-            <p><strong>Status:</strong> <span class="order-status ${order.status}">${order.status}</span></p>
-            <button class="rate-product-button admin-button info" data-product-id="${order.productId}" data-product-title="${order.productTitle}">Rate Product</button>
-        `;
-        orderHistoryList.appendChild(orderItem);
-    });
-
-    document.querySelectorAll('.rate-product-button').forEach(button => {
-        button.removeEventListener('click', openRatingModal);
-        button.addEventListener('click', openRatingModal);
-    });
-}
 
 function loadOrderHistory() {
-    // This function will only fetch orders if a user is logged in.
-    if (auth.currentUser) {
-        const ordersRef = ref(database, 'orders/');
-        onValue(ordersRef, (snapshot) => {
-            const userOrders = {};
-            snapshot.forEach((childSnapshot) => {
-                const order = childSnapshot.val();
-                order.orderId = childSnapshot.key; // Store the order ID
-                if (order.userId === auth.currentUser.uid) {
-                    userOrders[childSnapshot.key] = order;
-                }
-            });
-            displayOrderHistory(userOrders);
-        }, (error) => {
-            console.error("Error loading order history:", error);
-            showAlert("Failed to load order history.", "Error");
-        });
-    } else {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
         orderHistoryList.innerHTML = '<p>Please log in to view your order history.</p>';
+        return;
     }
+
+    const ordersRef = ref(database, 'orders');
+    onValue(ordersRef, (snapshot) => {
+        orderHistoryList.innerHTML = ''; // Clear previous history
+        const ordersData = snapshot.val();
+        let userOrdersFound = false;
+
+        if (ordersData) {
+            const userOrders = Object.values(ordersData).filter(order => order.userId === user.uid);
+            userOrders.sort((a, b) => b.orderDate - a.orderDate); // Sort by most recent
+
+            if (userOrders.length > 0) {
+                userOrdersFound = true;
+                userOrders.forEach(order => {
+                    const orderItem = document.createElement('div');
+                    orderItem.classList.add('order-item');
+                    const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
+                    orderItem.innerHTML = `
+                        <p><strong>Product:</strong> ${order.productTitle}</p>
+                        <p><strong>Price:</strong> $${order.productPrice.toFixed(2)}</p>
+                        <p><strong>Order Date:</strong> ${orderDate}</p>
+                        <p><strong>Status:</strong> ${order.status}</p>
+                        <p><strong>Address:</strong> ${order.address}</p>
+                        <p><strong>Phone:</strong> ${order.phoneNumber}</p>
+                        <img src="${order.productImageUrl}" alt="${order.productTitle}" style="width: 100px; height: 100px; object-fit: cover; margin-top: 10px;">
+                    `;
+                    orderHistoryList.appendChild(orderItem);
+                });
+            }
+        }
+
+        if (!userOrdersFound) {
+            orderHistoryList.innerHTML = '<p>No orders placed yet.</p>';
+        }
+    });
 }
 
-// --- Rating Functions ---
-function openRatingModal(event) {
-    // Use currentProductToRate if set by placeOrder, otherwise use event target
-    const productId = currentProductToRate ? currentProductToRate.id : event.currentTarget.dataset.productId;
-    const productTitle = currentProductToRate ? currentProductToRate.title : event.currentTarget.dataset.productTitle;
-
-    currentProductToRate = {
-        id: productId,
-        title: productTitle
-    };
-    ratingProductTitle.textContent = currentProductToRate.title;
-    selectedRating = 0; // Reset selected rating
-    updateRatingStars();
-    ratingModal.style.display = 'flex'; // Show modal
-}
-
-function closeRatingModal() {
-    ratingModal.style.display = 'none'; // Hide modal
-    currentProductToRate = null; // Clear product for rating
-    selectedRating = 0; // Reset selected rating
-}
 
 function updateRatingStars() {
-    const stars = ratingStarsContainer.querySelectorAll('.fa-star');
-    stars.forEach(star => {
+    ratingStarsContainer.querySelectorAll('.fa-star').forEach(star => {
         const rating = parseInt(star.dataset.rating);
         if (rating <= selectedRating) {
-            star.classList.add('selected');
+            star.classList.remove('far');
+            star.classList.add('fas', 'filled');
         } else {
-            star.classList.remove('selected');
+            star.classList.remove('fas', 'filled');
+            star.classList.add('far');
         }
     });
 }
 
 async function submitProductRating() {
-    if (!currentProductToRate || selectedRating === 0) {
-        showAlert("Please select a rating before submitting.", "Rating Error");
+    if (!currentProduct) {
+        showCustomAlert('Error', 'No product selected to rate.');
         return;
     }
 
-    // For a public app, you might allow guest ratings or require login.
-    // For now, we'll use a guest ID if not logged in.
-    const userId = auth.currentUser ? auth.currentUser.uid : `guest_${Date.now()}`;
+    const auth = getAuth();
+    const user = auth.currentUser;
 
-    const ratingData = {
-        productId: currentProductToRate.id,
-        userId: userId,
-        rating: selectedRating,
-        timestamp: serverTimestamp()
-    };
+    if (!user) {
+        showCustomAlert('Login Required', 'You must be logged in to submit a rating.');
+        return;
+    }
+
+    if (selectedRating === 0) {
+        showCustomAlert('Invalid Rating', 'Please select a star rating.');
+        return;
+    }
 
     try {
-        // Store ratings under productRatings/{productId}/{userId}
-        const ratingsRef = ref(database, `productRatings/${currentProductToRate.id}/${userId}`);
-        await set(ratingsRef, ratingData);
-        showAlert(`Thank you for rating ${currentProductToRate.title} with ${selectedRating} stars!`, "Rating Submitted");
+        const productRef = ref(database, `products/${currentProduct.id}/ratings/${user.uid}`);
+        await set(productRef, selectedRating);
+        showCustomAlert('Rating Submitted', 'Thank you for your feedback!');
         closeRatingModal();
+        // Re-load products to update displayed ratings
+        loadProducts();
     } catch (error) {
         console.error("Error submitting rating:", error);
-        showAlert("Failed to submit rating. Please try again.", "Rating Error");
+        showCustomAlert('Error', 'Failed to submit rating. Please try again.');
     }
 }
 
+function openRatingModal() {
+    selectedRating = 0; // Reset selected rating
+    updateRatingStars(); // Update stars to reflect reset
+    ratingModal.style.display = 'flex';
+}
+
+function closeRatingModal() {
+    ratingModal.style.display = 'none';
+}
+
+
 // --- Event Listeners ---
+closeModalBtn.addEventListener('click', () => {
+    productDetailsModal.style.display = 'none';
+    modalProductVideo.querySelector('iframe').src = ''; // Stop video playback
+});
+
+window.addEventListener('click', (event) => {
+    if (event.target === productDetailsModal) {
+        productDetailsModal.style.display = 'none';
+        modalProductVideo.querySelector('iframe').src = ''; // Stop video playback
+    }
+    if (event.target === customAlertModal) {
+        customAlertModal.style.display = 'none';
+    }
+});
+
+categoryFilters.addEventListener('click', (event) => {
+    if (event.target.classList.contains('category-button')) {
+        categoryFilters.querySelectorAll('.category-button').forEach(button => {
+            button.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        applyFiltersAndSort();
+    }
+});
+
+sortSelect.addEventListener('change', applyFiltersAndSort);
+searchButton.addEventListener('click', applyFiltersAndSort);
+searchInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') {
+        applyFiltersAndSort();
+    }
+});
+
+placeOrderButton.addEventListener('click', placeOrder);
+
+toggleOrderHistoryBtn.addEventListener('click', () => {
+    if (orderHistorySection.style.display === 'block') {
+        orderHistorySection.style.display = 'none';
+        toggleOrderHistoryBtn.textContent = 'Show Order History';
+    } else {
+        orderHistorySection.style.display = 'block';
+        toggleOrderHistoryBtn.textContent = 'Hide Order History';
+        loadOrderHistory(); // Load when shown
+    }
+});
+
+
+// Rating star click handler
+if (ratingStarsContainer) {
+    ratingStarsContainer.addEventListener('click', (event) => {
+        const star = event.target.closest('.fa-star');
+        if (star) {
+            selectedRating = parseInt(star.dataset.rating);
+            updateRatingStars();
+        }
+    });
+}
+
+// Submit rating button
+if (submitRatingButton) {
+    submitRatingButton.addEventListener('click', submitProductRating);
+}
+
+// Close rating modal
+if (closeRatingModalBtn) {
+    closeRatingModalBtn.addEventListener('click', closeRatingModal);
+}
+window.addEventListener('click', (event) => {
+    if (event.target === ratingModal) {
+        closeRatingModal();
+    }
+});
+
+
+// --- Authentication State Listener ---
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // User is signed in
+        loginButton.style.display = 'none';
+        logoutButton.style.display = 'inline-block';
+        // Check if the logged-in user is the admin
+        if (user.email === 'admin@hina.com') { // Replace with your actual admin email
+            adminLinkContainer.style.display = 'list-item'; // Show admin link
+        } else {
+            adminLinkContainer.style.display = 'none'; // Hide admin link for regular users
+        }
+        // Load user-specific data like order history
+        loadOrderHistory();
+    } else {
+        // User is signed out
+        loginButton.style.display = 'inline-block';
+        logoutButton.style.display = 'none';
+        adminLinkContainer.style.display = 'none'; // Always hide admin link if not logged in
+        orderHistorySection.style.display = 'none'; // Hide order history
+        toggleOrderHistoryBtn.textContent = 'Show Order History';
+    }
+});
+
+
+// --- Initial Load ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial load of products
-    loadProducts();
-
-    // Event listener for search button
-    if (searchButton) {
-        searchButton.addEventListener('click', filterAndSortProducts);
-    }
-
-    // Event listener for search input (live search on enter)
-    if (searchInput) {
-        searchInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                filterAndSortProducts();
-            }
-        });
-    }
-
-    // Event listeners for desktop category filter buttons
-    categoryFilterButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            categoryFilterButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            filterAndSortProducts();
-        });
-    });
-
-    // Event listener for sort by select
-    if (sortBySelect) {
-        sortBySelect.addEventListener('change', filterAndSortProducts);
-    }
-
-    // Close product modal
-    if (closeModalButton) {
-        closeModalButton.addEventListener('click', closeProductModal);
-    }
-    window.addEventListener('click', (event) => {
-        if (event.target === productModal) {
-            closeProductModal();
-        }
-    });
-
-    // Add to cart button in modal
-    if (addToCartButton) {
-        addToCartButton.addEventListener('click', addProductToCartFromModal);
-    }
-
-    // Place Order button in modal
-    if (placeOrderButton) {
-        placeOrderButton.addEventListener('click', placeOrder);
-    }
-
-    // Toggle Order History visibility
-    if (toggleOrderHistoryBtn) {
-        toggleOrderHistoryBtn.addEventListener('click', () => {
-            if (orderHistorySection.style.display === 'block') {
-                orderHistorySection.style.display = 'none';
-                toggleOrderHistoryBtn.textContent = 'Show Order History';
-            } else {
-                orderHistorySection.style.display = 'block';
-                toggleOrderHistoryBtn.textContent = 'Hide Order History';
-                loadOrderHistory(); // Load when shown
-            }
-        });
-    }
-
-    // Rating star click handler
-    if (ratingStarsContainer) {
-        ratingStarsContainer.addEventListener('click', (event) => {
-            const star = event.target.closest('.fa-star');
-            if (star) {
-                selectedRating = parseInt(star.dataset.rating);
-                updateRatingStars();
-            }
-        });
-    }
-
-    // Submit rating button
-    if (submitRatingButton) {
-        submitRatingButton.addEventListener('click', submitProductRating);
-    }
-
-    // Close rating modal
-    if (closeRatingModalBtn) {
-        closeRatingModalBtn.addEventListener('click', closeRatingModal);
-    }
-    window.addEventListener('click', (event) => {
-        if (event.target === ratingModal) {
-            closeRatingModal();
-        }
-    });
+    loadProducts(); // Initial load of products
+    // Firebase auth state listener handles initial data loading based on user status
 });
