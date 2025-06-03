@@ -34,7 +34,7 @@
                 <ul>
                     <li><a href="#products">Products</a></li>
                     <li><a href="#about">About</a></li>
-                    <li><a href="#contact">Contact</a></li>
+                    <!-- Removed Contact link as per request -->
                     <li id="admin-link-container" style="display: none;"><a href="admin.html">Admin</a></li>
                 </ul>
             </nav>
@@ -45,7 +45,7 @@
                 </div>
                 <div class="user-auth">
                     <button id="login-button" class="action-button"><i class="fas fa-sign-in-alt"></i> Login</button>
-                    <button id="signup-button" class="action-button" style="display: none;"><i class="fas fa-user-plus"></i> Sign Up</button>
+                    <button id="register-button" class="action-button"><i class="fas fa-user-plus"></i> Register</button>
                     <button id="logout-button" class="action-button" style="display: none;"><i class="fas fa-sign-out-alt"></i> Logout</button>
                 </div>
             </div>
@@ -92,30 +92,7 @@
             <p>Thank you for choosing Hina's Root&Bloom. Join us in cultivating a lifestyle that embraces quality, nature, and conscious living.</p>
         </section>
 
-        <section id="contact" class="contact-section">
-            <h2>Contact Us</h2>
-            <p>Have questions or feedback? We'd love to hear from you!</p>
-            <form class="contact-form">
-                <div class="form-group">
-                    <label for="name">Name:</label>
-                    <input type="text" id="name" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                <div class="form-group">
-                    <label for="message">Message:</label>
-                    <textarea id="message" name="message" rows="5" required></textarea>
-                </div>
-                <button type="submit" class="primary-button">Send Message</button>
-            </form>
-            <div class="contact-info">
-                <p><i class="fas fa-envelope"></i> Email: info@hinasrootandbloom.com</p>
-                <p><i class="fas fa-phone"></i> Phone: +1 (123) 456-7890</p>
-                <p><i class="fas fa-map-marker-alt"></i> Address: 123 Bloom Street, Garden City, Earth</p>
-            </div>
-        </section>
+        <!-- Removed Contact Section as per request -->
     </main>
 
     <!-- Product Details Modal -->
@@ -146,8 +123,10 @@
         <div class="custom-modal-content">
             <h4 id="custom-modal-title"></h4>
             <p id="custom-modal-message"></p>
-            <input type="text" id="address-input" placeholder="Enter your address" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid var(--color-border-medium); border-radius: 4px;">
-            <input type="text" id="phone-input" placeholder="Enter your phone number" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid var(--color-border-medium); border-radius: 4px;">
+            <input type="text" id="address-input" placeholder="Enter your address" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid var(--color-border-medium); border-radius: 4px; display: none;">
+            <input type="text" id="phone-input" placeholder="Enter your phone number" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid var(--color-border-medium); border-radius: 4px; display: none;">
+            <input type="email" id="auth-email-input" placeholder="Enter your email" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid var(--color-border-medium); border-radius: 4px; display: none;">
+            <input type="password" id="auth-password-input" placeholder="Enter your password" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid var(--color-border-medium); border-radius: 4px; display: none;">
             <div class="custom-modal-buttons">
                 <button id="custom-modal-ok-btn" class="custom-modal-button primary">OK</button>
                 <button id="custom-modal-cancel-btn" class="custom-modal-button secondary" style="display:none;">Cancel</button>
@@ -176,6 +155,7 @@
         <p>Project of ThunderBound</p>
         <p>Organized by ThunderBound</p>
         <p><a href="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/" target="_blank" class="footer-link">Support</a></p>
+        <button id="open-code-button" class="action-button" style="margin-top: 10px;">Open Code in Canvas</button>
     </footer>
 
     <script type="module" src="script.js"></script>
