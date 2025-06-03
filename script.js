@@ -1,235 +1,147 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getDatabase, ref, push, set, remove, onValue, serverTimestamp, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBr6A2OGh-nwfMzOwmVOWs1-u5ylZ2Vemw", // Replace with your actual API Key
+  apiKey: "AIzaSyBr6A2OGh-nwfMzOwmVOWs1-u5ylZ2Vemw",
   authDomain: "hina-s-rootandbloomstore.firebaseapp.com",
   databaseURL: "https://hina-s-rootandbloomstore-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "hina-s-rootandbloomstore",
   storageBucket: "hina-s-rootandbloomstore.firebasestorage.app",
   messagingSenderId: "967448486557",
-  appId: "1:967448486557:web:2c89223921f6479010495f", // IMPORTANT: This was corrected from G-TT31HC3NZ3
-  measurementId: "G-TT31HC3NZ3" // IMPORTANT: This is the correct measurement ID
+  appId: "1:967448486557:web:f559288e2197177f805a50",
+  measurementId: "G-CM2G05658R"
 };
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app); // Initialize analytics
+const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const database = getDatabase(app);
 const storage = getStorage(app);
 
+
 // --- DOM Elements ---
-const authLink = document.getElementById('auth-link');
-const homeLink = document.getElementById('home-link');
-const cartLink = document.getElementById('cart-link');
-const orderHistoryLink = document.getElementById('order-history-link');
-
-const authSection = document.getElementById('auth-section');
-const productListingSection = document.getElementById('product-listing-section');
-const cartSection = document.getElementById('cart-section');
-const orderHistorySection = document.getElementById('order-history-section');
-
+const loginLink = document.getElementById('login-link');
+const adminLink = document.getElementById('admin-link');
+const logoutLink = document.getElementById('logout-link');
+const loginModal = document.getElementById('login-modal');
+const closeLoginModalButton = loginModal.querySelector('.close-button');
+const loginForm = document.getElementById('login-form');
 const loginEmailInput = document.getElementById('login-email');
 const loginPasswordInput = document.getElementById('login-password');
-const loginBtn = document.getElementById('login-btn');
-const signupEmailInput = document.getElementById('signup-email');
-const signupPasswordInput = document.getElementById('signup-password');
-const signupBtn = document.getElementById('signup-btn');
+const loginErrorMessage = document.getElementById('login-error-message');
 
 const productGrid = document.getElementById('product-grid');
-const cartItemsContainer = document.getElementById('cart-items');
-const cartTotalSpan = document.getElementById('cart-total');
-const cartCountSpan = document.getElementById('cart-count');
-const checkoutBtn = document.getElementById('checkout-btn');
+const categoryFilters = document.getElementById('category-filters');
+const sortOptions = document.getElementById('sort-options');
 
-const searchInput = document.getElementById('search-input');
-const searchButton = document.getElementById('search-button');
-const categoryFiltersContainer = document.getElementById('category-filters');
-const sortSelect = document.getElementById('sort-select');
-
-const orderHistoryList = document.getElementById('order-history-list');
-
-// Product Detail Modal Elements
-const productDetailModal = document.getElementById('product-detail-modal');
-const closeDetailModalBtn = document.getElementById('close-detail-modal-btn');
+const productModal = document.getElementById('product-modal');
+const closeProductModalButton = productModal.querySelector('.close-button');
 const modalProductImage = document.getElementById('modal-product-image');
 const modalProductTitle = document.getElementById('modal-product-title');
-const modalProductPrice = document.getElementById('modal-product-price');
 const modalProductDescription = document.getElementById('modal-product-description');
-const modalProductCategory = document.getElementById('modal-product-category');
-const modalProductRating = document.getElementById('modal-product-rating');
-const productQuantityInput = document.getElementById('product-quantity');
-const decreaseQuantityBtn = document.getElementById('decrease-quantity');
-const increaseQuantityBtn = document.getElementById('increase-quantity');
+const modalProductVideoContainer = document.getElementById('modal-product-video-container');
+const modalProductVideo = document.getElementById('modal-product-video');
+const modalProductPrice = document.getElementById('modal-product-price');
+const modalProductQuantity = document.getElementById('modal-product-quantity');
 const addToCartModalBtn = document.getElementById('add-to-cart-modal-btn');
-const placeOrderBtn = document.getElementById('place-order-btn');
+const placeOrderModalBtn = document.getElementById('place-order-modal-btn');
 
-// Order Form Elements
-const orderFormSection = document.getElementById('order-form-section');
-const orderNameInput = document.getElementById('order-name');
-const orderAddressInput = document.getElementById('order-address');
-const orderEmailInput = document.getElementById('order-email');
-const orderPhoneInput = document.getElementById('order-phone');
+const cartIcon = document.getElementById('cart-icon');
+const cartCount = document.getElementById('cart-count');
 
-// Rating Modal Elements
-const ratingModal = document.getElementById('rating-modal');
-const closeRatingModalBtn = document.getElementById('close-rating-modal-btn');
-const ratingProductTitle = document.getElementById('rating-product-title');
-const ratingStarsContainer = document.getElementById('rating-stars-container');
-const ratingCommentInput = document.getElementById('rating-comment');
-const submitRatingButton = document.getElementById('submit-rating-button');
-
-// Custom Alert Modal Elements
 const customAlertModal = document.getElementById('custom-alert-modal');
 const customModalTitle = document.getElementById('custom-modal-title');
 const customModalMessage = document.getElementById('custom-modal-message');
 const customModalOkBtn = document.getElementById('custom-modal-ok-btn');
+const customModalCancelBtn = document.getElementById('custom-modal-cancel-btn');
 
-// Order Confirmation Modal Elements
-const orderConfirmationModal = document.getElementById('order-confirmation-modal');
-const orderConfirmationOkBtn = document.getElementById('order-confirmation-ok-btn');
+const ratingModal = document.getElementById('rating-modal');
+const closeRatingModalBtn = document.getElementById('close-rating-modal-btn');
+const ratingProductTitle = document.getElementById('rating-product-title');
+const ratingStarsContainer = document.getElementById('rating-stars-container');
+const ratingReviewText = document.getElementById('rating-review-text');
+const submitRatingButton = document.getElementById('submit-rating-btn');
+const modalAverageRating = document.getElementById('modal-average-rating');
+const modalRatingBreakdown = document.getElementById('modal-rating-breakdown');
+const rateProductBtn = document.getElementById('rate-product-btn');
 
+const contactForm = document.getElementById('contact-form');
 
+const orderHistoryModal = document.getElementById('order-history-modal');
+const closeOrderHistoryModalBtn = orderHistoryModal.querySelector('.close-button');
+const orderHistoryList = document.getElementById('order-history-list');
+const toggleOrderHistoryBtn = document.getElementById('toggle-order-history-btn');
+
+const shopSection = document.getElementById('shop');
+const cartItemsContainer = document.getElementById('cart-items');
+const emptyCartMessage = document.getElementById('empty-cart-message');
+const cartTotalSpan = document.getElementById('cart-total');
+const placeCartOrderBtn = document.getElementById('place-cart-order-btn');
+const navLinks = document.querySelectorAll('.nav-link'); // For active tab highlighting
+
+// --- Global Variables ---
 let products = [];
-let cart = JSON.parse(localStorage.getItem('cart')) || {};
-let currentProduct = null; // To store the product being viewed in the modal
-let selectedRating = 0; // To store the rating selected in the rating modal
+let categories = [];
+let cart = JSON.parse(localStorage.getItem('cart')) || [];
+let currentProduct = null; // For modal context
+let selectedRating = 0; // For rating submission
 
-// --- Firebase Authentication ---
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        // User is signed in
-        if (authLink) {
-            authLink.textContent = 'Logout';
-            authLink.removeEventListener('click', showAuthSection); // Remove old listener
-            authLink.addEventListener('click', handleLogout); // Add new listener for logout
+
+// --- Firebase References ---
+const dbRef = ref(database);
+const productsRef = ref(database, 'products');
+const categoriesRef = ref(database, 'categories');
+const ordersRef = ref(database, 'orders');
+const ratingsRef = ref(database, 'ratings');
+const messagesRef = ref(database, 'messages');
+
+
+// --- Utility Functions ---
+
+function showCustomAlert(title, message, isConfirm = false) {
+    return new Promise((resolve) => {
+        customModalTitle.textContent = title;
+        customModalMessage.textContent = message;
+        customModalCancelBtn.style.display = isConfirm ? 'inline-block' : 'none';
+        customAlertModal.style.display = 'flex'; // Use flex to center
+
+        customModalOkBtn.onclick = () => {
+            customAlertModal.style.display = 'none';
+            resolve(true);
+        };
+
+        customModalCancelBtn.onclick = () => {
+            customAlertModal.style.display = 'none';
+            resolve(false);
+        };
+
+        // Close on outside click for alert, but not for confirm
+        if (!isConfirm) {
+            customAlertModal.addEventListener('click', function handler(event) {
+                if (event.target === customAlertModal) {
+                    customAlertModal.style.display = 'none';
+                    resolve(false); // Resolve false if clicked outside for alert
+                    customAlertModal.removeEventListener('click', handler);
+                }
+            });
         }
-        if (orderHistoryLink) orderHistoryLink.style.display = 'block';
-        displaySection('product-listing-section'); // Show product listing after login
-        loadCart(); // Load cart for logged-in user
-        loadOrderHistory(); // Load order history for logged-in user
-    } else {
-        // User is signed out
-        if (authLink) {
-            authLink.textContent = 'Login';
-            authLink.removeEventListener('click', handleLogout); // Remove old listener
-            authLink.addEventListener('click', showAuthSection); // Add new listener for login
-        }
-        if (orderHistoryLink) orderHistoryLink.style.display = 'none';
-        displaySection('product-listing-section'); // Show product listing after logout
-        cart = {}; // Clear cart if user logs out
-        saveCart();
-        loadCart(); // Update cart display
-    }
-});
-
-async function handleLogin() {
-    const email = loginEmailInput ? loginEmailInput.value : '';
-    const password = loginPasswordInput ? loginPasswordInput.value : '';
-    if (!email || !password) {
-        showAlert('Input Error', 'Please enter both email and password.');
-        return;
-    }
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        showAlert('Success', 'Logged in successfully!');
-        if (loginEmailInput) loginEmailInput.value = '';
-        if (loginPasswordInput) loginPasswordInput.value = '';
-        // UI update handled by onAuthStateChanged
-    } catch (error) {
-        showAlert('Login Failed', error.message);
-        console.error("Login error:", error);
-    }
-}
-
-async function handleSignUp() {
-    const email = signupEmailInput ? signupEmailInput.value : '';
-    const password = signupPasswordInput ? signupPasswordInput.value : '';
-    if (!email || !password) {
-        showAlert('Input Error', 'Please enter both email and password.');
-        return;
-    }
-    try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        showAlert('Success', 'Signed up and logged in successfully!');
-        if (signupEmailInput) signupEmailInput.value = '';
-        if (signupPasswordInput) signupPasswordInput.value = '';
-        // UI update handled by onAuthStateChanged
-    } catch (error) {
-        showAlert('Sign Up Failed', error.message);
-        console.error("Sign up error:", error);
-    }
-}
-
-function handleLogout() {
-    signOut(auth).then(() => {
-        showAlert('Success', 'Logged out successfully!');
-        // UI update handled by onAuthStateChanged
-    }).catch((error) => {
-        showAlert('Logout Failed', error.message);
-        console.error("Logout error:", error);
     });
 }
 
-// --- Section Display ---
-function displaySection(sectionId) {
-    if (authSection) authSection.style.display = 'none';
-    if (productListingSection) productListingSection.style.display = 'none';
-    if (cartSection) cartSection.style.display = 'none';
-    if (orderHistorySection) orderHistorySection.style.display = 'none';
-
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-    }
-
-    // Update active link in navigation
-    document.querySelectorAll('.main-nav ul li a').forEach(link => {
-        link.classList.remove('active');
-    });
-    if (sectionId === 'product-listing-section' && homeLink) {
-        homeLink.classList.add('active');
-    } else if (sectionId === 'cart-section' && cartLink) {
-        cartLink.classList.add('active');
-    } else if (sectionId === 'auth-section' && authLink) {
-        authLink.classList.add('active');
-    } else if (sectionId === 'order-history-section' && orderHistoryLink) {
-        orderHistoryLink.classList.add('active');
-    }
-}
-
-function showAuthSection() {
-    displaySection('auth-section');
-}
-
-// --- Product Listing ---
-function loadProducts() {
-    const productsRef = ref(database, 'products');
-    onValue(productsRef, (snapshot) => {
-        products = [];
-        snapshot.forEach((childSnapshot) => {
-            products.push({ id: childSnapshot.key, ...childSnapshot.val() });
-        });
-        displayProducts(products);
-        populateCategoryFilters(products);
-    }, (error) => {
-        console.error("Error loading products:", error);
-        showAlert('Error', 'Failed to load products.');
-    });
-}
+// --- Product Display Functions ---
 
 function displayProducts(productsToDisplay) {
-    if (!productGrid) return; // Ensure productGrid exists
-    productGrid.innerHTML = '';
+    productGrid.innerHTML = ''; // Clear existing products
     if (productsToDisplay.length === 0) {
-        productGrid.innerHTML = '<p>No products found.</p>';
+        productGrid.innerHTML = '<p>No products found for this category.</p>';
         return;
     }
 
@@ -238,564 +150,314 @@ function displayProducts(productsToDisplay) {
         productCard.classList.add('product-card');
         productCard.dataset.id = product.id;
 
-        // Calculate average rating for display
-        const productRatings = product.ratings || {};
-        const averageRating = calculateAverageRating(productRatings);
-        const starIcons = getStarRatingHtml(averageRating);
-        const ratingCount = Object.keys(productRatings).length;
-
         productCard.innerHTML = `
             <div class="product-image-container">
-                <img src="${product.imageUrl || 'https://placehold.co/200x200?text=No+Image'}" alt="${product.title}" class="product-image">
+                <img src="${product.imageUrl || 'https://via.placeholder.com/200'}" alt="${product.title}">
             </div>
             <div class="product-info">
-                <h3 class="product-title">${product.title}</h3>
-                <p class="product-price">PKR ${product.price ? product.price.toFixed(2) : '0.00'}</p>
-                <div class="product-rating">${starIcons} (${ratingCount})</div>
+                <h3>${product.title}</h3>
+                <p>${product.description.substring(0, 70)}...</p>
+                <p class="product-price">$${product.price.toFixed(2)}</p>
                 <div class="product-actions">
-                    <button class="button primary add-to-cart-btn" data-id="${product.id}"><i class="fas fa-cart-plus"></i> Add to Cart</button>
-                    <button class="button secondary view-detail-btn" data-id="${product.id}"><i class="fas fa-eye"></i> View Detail</button>
+                    <button class="button primary-button view-detail-btn" data-id="${product.id}">View Detail</button>
+                    <button class="button secondary-button add-to-cart-btn" data-id="${product.id}">Add to Cart</button>
                 </div>
             </div>
         `;
         productGrid.appendChild(productCard);
     });
 
-    // Attach event listeners for "Add to Cart" and "View Detail" buttons
-    document.querySelectorAll('.add-to-cart-btn').forEach(button => {
-        button.addEventListener('click', (event) => {
-            const productId = event.currentTarget.dataset.id;
-            const product = products.find(p => p.id === productId);
-            if (product) {
-                addToCart(product, 1);
-                showAlert('Added to Cart', `${product.title} added to your cart.`);
-            }
-        });
-    });
-
     document.querySelectorAll('.view-detail-btn').forEach(button => {
         button.addEventListener('click', (event) => {
-            const productId = event.currentTarget.dataset.id;
-            showProductDetail(productId);
+            const productId = event.target.dataset.id;
+            openProductModal(productId);
+        });
+    });
+
+    document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const productId = event.target.dataset.id;
+            addToCart(productId, 1);
+            showCustomAlert('Added to Cart', 'Product has been added to your cart!');
         });
     });
 }
 
-function calculateAverageRating(ratings) {
-    if (!ratings || Object.keys(ratings).length === 0) return 0;
-    const ratingValues = Object.values(ratings).map(r => r.rating);
-    const sum = ratingValues.reduce((acc, curr) => acc + curr, 0);
-    return sum / ratingValues.length;
-}
-
-function getStarRatingHtml(averageRating) {
-    let starsHtml = '';
-    for (let i = 1; i <= 5; i++) {
-        if (i <= Math.round(averageRating)) {
-            starsHtml += '<i class="fas fa-star"></i>'; // Filled star
-        } else {
-            starsHtml += '<i class="far fa-star"></i>'; // Empty star
-        }
-    }
-    return starsHtml;
-}
-
-function populateCategoryFilters(allProducts) {
-    if (!categoryFiltersContainer) return;
-
-    // Clear existing dynamic category buttons, keep "All"
-    const existingButtons = Array.from(categoryFiltersContainer.children);
-    existingButtons.forEach(btn => {
-        if (btn.dataset.category !== 'all') {
-            btn.remove();
-        }
-    });
-
-    const categoriesFromFirebase = new Set();
-    allProducts.forEach(product => {
-        if (product.category) {
-            categoriesFromFirebase.add(product.category);
-        }
-    });
-
-    // Add new categories from Firebase
-    categoriesFromFirebase.forEach(category => {
-        const button = document.createElement('button');
-        button.classList.add('category-button');
-        button.dataset.category = category;
-        button.textContent = category.charAt(0).toUpperCase() + category.slice(1); // Capitalize
-        categoryFiltersContainer.appendChild(button);
-    });
-
-    // Re-attach event listeners to ALL category buttons (both hardcoded "All" and dynamically added)
-    document.querySelectorAll('.category-button').forEach(button => {
-        button.removeEventListener('click', handleCategoryFilterClick); // Prevent duplicate listeners
-        button.addEventListener('click', handleCategoryFilterClick);
-    });
-}
-
-function handleCategoryFilterClick(event) {
-    document.querySelectorAll('.category-button').forEach(btn => btn.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    filterAndSortProducts();
-}
-
-
 function filterAndSortProducts() {
-    const searchQuery = searchInput ? searchInput.value.toLowerCase() : '';
-    const selectedCategory = document.querySelector('.category-button.active')?.dataset.category || 'all';
-    const sortOption = sortSelect ? sortSelect.value : 'default';
+    let filteredProducts = [...products]; // Create a mutable copy
 
-    let filtered = products.filter(product => {
-        const matchesSearch = product.title.toLowerCase().includes(searchQuery) ||
-                              product.description.toLowerCase().includes(searchQuery) ||
-                              product.brand.toLowerCase().includes(searchQuery); // Include brand in search
-        const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-        return matchesSearch && matchesCategory;
-    });
+    // Filter by category
+    const activeCategoryButton = document.querySelector('.category-button.active');
+    const selectedCategory = activeCategoryButton ? activeCategoryButton.dataset.category : 'all';
 
-    filtered.sort((a, b) => {
-        switch (sortOption) {
-            case 'price-asc':
-                return (a.price || 0) - (b.price || 0);
-            case 'price-desc':
-                return (b.price || 0) - (a.price || 0);
-            case 'name-asc':
-                return (a.title || '').localeCompare(b.title || '');
-            case 'name-desc':
-                return (b.title || '').localeCompare(a.title || '');
-            case 'rating-desc':
-                const ratingA = a.ratings ? calculateAverageRating(a.ratings) : 0;
-                const ratingB = b.ratings ? calculateAverageRating(b.ratings) : 0;
-                return ratingB - ratingA;
-            default:
-                return 0;
-        }
-    });
+    if (selectedCategory !== 'all') {
+        filteredProducts = filteredProducts.filter(product => product.category === selectedCategory);
+    }
 
-    displayProducts(filtered);
+    // Sort products
+    const sortBy = sortOptions.value;
+    if (sortBy === 'price-asc') {
+        filteredProducts.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'price-desc') {
+        filteredProducts.sort((a, b) => b.price - a.price);
+    } else if (sortBy === 'name-asc') {
+        filteredProducts.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === 'name-desc') {
+        filteredProducts.sort((a, b) => b.title.localeCompare(a.title));
+    }
+
+    displayProducts(filteredProducts);
 }
 
-// --- Product Detail Modal ---
-function showProductDetail(productId) {
+// --- Product Modal Functions ---
+
+async function openProductModal(productId) {
     currentProduct = products.find(p => p.id === productId);
     if (!currentProduct) {
-        showAlert('Error', 'Product not found.');
+        showCustomAlert('Error', 'Product not found.');
         return;
     }
 
-    if (modalProductImage) modalProductImage.src = currentProduct.imageUrl || 'https://placehold.co/400x400?text=No+Image';
-    if (modalProductTitle) modalProductTitle.textContent = currentProduct.title;
-    if (modalProductPrice) modalProductPrice.textContent = `PKR ${currentProduct.price ? currentProduct.price.toFixed(2) : '0.00'}`;
-    if (modalProductDescription) modalProductDescription.textContent = currentProduct.description;
-    if (modalProductCategory) modalProductCategory.textContent = currentProduct.category || 'N/A';
-    if (productQuantityInput) productQuantityInput.value = 1; // Reset quantity
+    modalProductImage.src = currentProduct.imageUrl || 'https://via.placeholder.com/400';
+    modalProductImage.alt = currentProduct.title;
+    modalProductTitle.textContent = currentProduct.title;
+    modalProductDescription.textContent = currentProduct.description;
+    modalProductPrice.textContent = `$${currentProduct.price.toFixed(2)}`;
+    modalProductQuantity.value = 1; // Reset quantity
 
-    // Display average rating and "Rate this product" button
-    const productRatings = currentProduct.ratings || {};
-    const averageRating = calculateAverageRating(productRatings);
-    const ratingCount = Object.keys(productRatings).length;
-    if (modalProductRating) {
-        modalProductRating.innerHTML = `${getStarRatingHtml(averageRating)} (${ratingCount} reviews) <button class="button secondary" id="rate-product-btn">Rate this product</button>`;
-    }
-
-    // Hide the order form by default when opening modal
-    if (orderFormSection) orderFormSection.style.display = 'none';
-    // Reset "Place Order" button text and ensure it has the correct listener
-    if (placeOrderBtn) {
-        placeOrderBtn.textContent = 'Place Order';
-        placeOrderBtn.removeEventListener('click', confirmOrder); // Remove confirm handler if present
-        placeOrderBtn.addEventListener('click', handlePlaceOrderClick); // Add or re-add initial handler
-    }
-    // Clear order form fields
-    if (orderNameInput) orderNameInput.value = '';
-    if (orderAddressInput) orderAddressInput.value = '';
-    if (orderEmailInput) orderEmailInput.value = '';
-    if (orderPhoneInput) orderPhoneInput.value = '';
-
-
-    if (productDetailModal) productDetailModal.classList.add('active');
-    if (document.body) document.body.classList.add('no-scroll'); // Add no-scroll class
-    
-    const rateProductBtn = document.getElementById('rate-product-btn');
-    if (rateProductBtn) {
-        rateProductBtn.addEventListener('click', openRatingModal);
-    }
-}
-
-function closeProductDetailModal() {
-    if (productDetailModal) productDetailModal.classList.remove('active');
-    if (document.body) document.body.classList.remove('no-scroll'); // Remove no-scroll class
-    currentProduct = null;
-    // Hide the order form when closing the modal
-    if (orderFormSection) orderFormSection.style.display = 'none';
-    // Reset form fields
-    if (orderNameInput) orderNameInput.value = '';
-    if (orderAddressInput) orderAddressInput.value = '';
-    if (orderEmailInput) orderEmailInput.value = '';
-    if (orderPhoneInput) orderPhoneInput.value = '';
-    // Reset the place order button text and listener
-    if (placeOrderBtn) {
-        placeOrderBtn.textContent = 'Place Order';
-        placeOrderBtn.removeEventListener('click', confirmOrder); // Ensure old listener is removed
-        placeOrderBtn.addEventListener('click', handlePlaceOrderClick); // Re-add initial listener
-    }
-}
-
-// --- Cart Functionality ---
-function saveCart() {
-    localStorage.setItem('cart', JSON.stringify(cart));
-    updateCartCount();
-}
-
-function loadCart() {
-    renderCart();
-    updateCartCount();
-}
-
-function addToCart(product, quantity) {
-    if (cart[product.id]) {
-        cart[product.id].quantity += quantity;
+    // Handle video display
+    if (currentProduct.videoUrl) {
+        modalProductVideoContainer.style.display = 'block';
+        // Basic embedding for YouTube, you might need more robust parsing for other services
+        const videoId = currentProduct.videoUrl.split('v=')[1] || currentProduct.videoUrl.split('/').pop();
+        modalProductVideo.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
     } else {
-        cart[product.id] = { ...product, quantity };
+        modalProductVideoContainer.style.display = 'none';
+        modalProductVideo.innerHTML = '';
     }
+
+    await loadProductRatings(productId); // Load ratings for the current product
+    productModal.style.display = 'flex';
+}
+
+function closeProductModal() {
+    productModal.style.display = 'none';
+    currentProduct = null;
+    modalProductVideo.innerHTML = ''; // Clear video iframe
+    selectedRating = 0; // Reset selected rating
+    updateRatingStars(); // Reset rating stars
+}
+
+// --- Cart Functions ---
+
+function addToCart(productId, quantity) {
+    const productToAdd = products.find(p => p.id === productId);
+    if (!productToAdd) return;
+
+    const existingCartItem = cart.find(item => item.id === productId);
+
+    if (existingCartItem) {
+        existingCartItem.quantity += quantity;
+    } else {
+        cart.push({
+            id: productToAdd.id,
+            title: productToAdd.title,
+            price: productToAdd.price,
+            imageUrl: productToAdd.imageUrl,
+            quantity: quantity
+        });
+    }
+    updateCartDisplay();
     saveCart();
-    renderCart();
 }
 
 function removeFromCart(productId) {
-    delete cart[productId];
+    cart = cart.filter(item => item.id !== productId);
+    updateCartDisplay();
     saveCart();
-    renderCart();
-}
-
-function updateCartQuantity(productId, newQuantity) {
-    if (cart[productId]) {
-        cart[productId].quantity = newQuantity;
-        if (cart[productId].quantity <= 0) {
-            removeFromCart(productId);
-        } else {
-            saveCart();
-        }
+    if (cart.length === 0) {
+        emptyCartMessage.style.display = 'block';
+        placeCartOrderBtn.style.display = 'none';
     }
-    renderCart();
 }
 
-function renderCart() {
-    if (!cartItemsContainer) return;
-    cartItemsContainer.innerHTML = '';
-    let total = 0;
-    const productIdsInCart = Object.keys(cart);
+function updateCartItemQuantity(productId, newQuantity) {
+    const item = cart.find(item => item.id === productId);
+    if (item) {
+        item.quantity = parseInt(newQuantity, 10);
+        if (item.quantity <= 0) {
+            removeFromCart(productId);
+        }
+        updateCartDisplay();
+        saveCart();
+    }
+}
 
-    if (productIdsInCart.length === 0) {
-        cartItemsContainer.innerHTML = '<p>Your cart is empty.</p>';
-        if (cartTotalSpan) cartTotalSpan.textContent = '0.00';
-        if (checkoutBtn) checkoutBtn.disabled = true;
+function updateCartDisplay() {
+    cartCount.textContent = cart.reduce((total, item) => total + item.quantity, 0);
+    renderCartItems();
+    calculateCartTotal();
+}
+
+function saveCart() {
+    localStorage.setItem('cart', JSON.stringify(cart));
+}
+
+function renderCartItems() {
+    cartItemsContainer.innerHTML = '';
+    if (cart.length === 0) {
+        emptyCartMessage.style.display = 'block';
+        placeCartOrderBtn.style.display = 'none';
         return;
     }
+    emptyCartMessage.style.display = 'none';
+    placeCartOrderBtn.style.display = 'block';
 
-    if (checkoutBtn) checkoutBtn.disabled = false;
-
-    productIdsInCart.forEach(productId => {
-        const item = cart[productId];
-        const itemTotal = (item.price || 0) * item.quantity;
-        total += itemTotal;
-
+    cart.forEach(item => {
         const cartItemDiv = document.createElement('div');
         cartItemDiv.classList.add('cart-item');
         cartItemDiv.innerHTML = `
-            <div class="cart-item-image-container">
-                <img src="${item.imageUrl || 'https://placehold.co/80x80?text=No+Image'}" alt="${item.title}" class="cart-item-image">
-            </div>
+            <img src="${item.imageUrl || 'https://via.placeholder.com/80'}" alt="${item.title}" class="cart-item-image">
             <div class="cart-item-details">
                 <h4>${item.title}</h4>
-                <p>Price: PKR ${item.price ? item.price.toFixed(2) : '0.00'}</p>
-            </div>
-            <div class="cart-item-actions">
-                <div class="quantity-control">
-                    <button class="decrease-cart-quantity" data-id="${item.id}">-</button>
+                <p>$${item.price.toFixed(2)} x ${item.quantity}</p>
+                <div class="cart-item-quantity">
+                    <label>Qty:</label>
                     <input type="number" value="${item.quantity}" min="1" data-id="${item.id}" class="cart-quantity-input">
-                    <button class="increase-cart-quantity" data-id="${item.id}">+</button>
                 </div>
-                <p class="cart-item-price">PKR ${itemTotal.toFixed(2)}</p>
-                <button class="cart-item-remove" data-id="${item.id}"><i class="fas fa-trash"></i></button>
             </div>
+            <button class="remove-from-cart-btn" data-id="${item.id}">Remove</button>
         `;
         cartItemsContainer.appendChild(cartItemDiv);
     });
 
-    if (cartTotalSpan) cartTotalSpan.textContent = total.toFixed(2);
-
-    // Add event listeners for quantity and remove buttons in cart
-    document.querySelectorAll('.decrease-cart-quantity').forEach(button => {
+    document.querySelectorAll('.remove-from-cart-btn').forEach(button => {
         button.addEventListener('click', (event) => {
-            const productId = event.currentTarget.dataset.id;
-            if (cart[productId]) {
-                updateCartQuantity(productId, cart[productId].quantity - 1);
-            }
-        });
-    });
-
-    document.querySelectorAll('.increase-cart-quantity').forEach(button => {
-        button.addEventListener('click', (event) => {
-            const productId = event.currentTarget.dataset.id;
-            if (cart[productId]) {
-                updateCartQuantity(productId, cart[productId].quantity + 1);
-            }
+            removeFromCart(event.target.dataset.id);
         });
     });
 
     document.querySelectorAll('.cart-quantity-input').forEach(input => {
         input.addEventListener('change', (event) => {
-            const productId = event.currentTarget.dataset.id;
-            const newQuantity = parseInt(event.currentTarget.value);
-            if (!isNaN(newQuantity) && newQuantity >= 1) {
-                updateCartQuantity(productId, newQuantity);
-            } else if (cart[productId]) {
-                event.currentTarget.value = cart[productId].quantity; // Revert to current quantity if invalid
-            }
-        });
-    });
-
-    document.querySelectorAll('.cart-item-remove').forEach(button => {
-        button.addEventListener('click', (event) => {
-            const productId = event.currentTarget.dataset.id;
-            removeFromCart(productId);
+            updateCartItemQuantity(event.target.dataset.id, event.target.value);
         });
     });
 }
 
-function updateCartCount() {
-    if (!cartCountSpan) return;
-    const count = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
-    cartCountSpan.textContent = count;
+function calculateCartTotal() {
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    cartTotalSpan.textContent = `$${total.toFixed(2)}`;
 }
 
-// --- Order Placement ---
-function handlePlaceOrderClick() {
-    // This function is called when the "Place Order" button in the modal is clicked
-    // It displays the order form and changes the button to "Confirm Order"
-    if (orderFormSection) orderFormSection.style.display = 'block';
-    // Scroll to the order form section within the modal
-    if (orderFormSection) orderFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    if (placeOrderBtn) {
-        placeOrderBtn.textContent = 'Confirm Order';
-        // IMPORTANT: Remove the current 'handlePlaceOrderClick' listener and add 'confirmOrder' listener
-        placeOrderBtn.removeEventListener('click', handlePlaceOrderClick);
-        placeOrderBtn.addEventListener('click', confirmOrder);
-    }
-}
+// --- Order Functions ---
 
-async function confirmOrder() {
-    const customerName = orderNameInput ? orderNameInput.value.trim() : '';
-    const customerAddress = orderAddressInput ? orderAddressInput.value.trim() : '';
-    const customerEmail = orderEmailInput ? orderEmailInput.value.trim() : '';
-    const customerPhone = orderPhoneInput ? orderPhoneInput.value.trim() : '';
+async function placeOrder(productDetails = null, itemsFromCart = false) {
+    let orderItems = [];
+    let orderTotal = 0;
 
-    if (!customerName || !customerAddress || !customerEmail || !customerPhone) {
-        showAlert('Missing Information', 'Please fill in all order details.');
-        return;
-    }
-
-    if (!currentProduct) {
-        showAlert('Error', 'No product selected for order.');
-        return;
-    }
-
-    const quantity = parseInt(productQuantityInput ? productQuantityInput.value : 0);
-    if (isNaN(quantity) || quantity <= 0) {
-        showAlert('Invalid Quantity', 'Invalid quantity.');
-        return;
-    }
-
-    const orderDetails = {
-        productId: currentProduct.id,
-        productTitle: currentProduct.title,
-        productPrice: currentProduct.price,
-        productImageUrl: currentProduct.imageUrl,
-        quantity: quantity,
-        totalAmount: (currentProduct.price || 0) * quantity,
-        customerName: customerName,
-        customerAddress: customerAddress,
-        customerEmail: customerEmail,
-        customerPhone: customerPhone,
-        orderDate: serverTimestamp(),
-        status: 'Pending' // Initial status
-    };
-
-    try {
-        const newOrderRef = push(ref(database, 'orders'));
-        await set(newOrderRef, orderDetails);
-        showAlert('Order Placed!', 'Your order has been placed successfully. Thank you for your purchase!');
-        showOrderConfirmationModal(); // Show order confirmation modal
-        closeProductDetailModal(); // Close the product detail modal
-        // Clear order form fields and reset button state are now handled by closeProductDetailModal
-
-    } catch (error) {
-        showAlert('Order Failed', `There was an error placing your order: ${error.message}`);
-        console.error("Order placement error:", error);
-    }
-}
-
-async function handleCheckout() {
-    const productIdsInCart = Object.keys(cart);
-    if (productIdsInCart.length === 0) {
-        showAlert('Cart Empty', 'Your cart is empty. Add some products before checking out.');
-        return;
-    }
-
-    const user = auth.currentUser;
-    // If you want to force login for checkout, uncomment this block
-    /*
-    if (!user) {
-        showAlert('Login Required', 'Please login or sign up to place an order.');
-        displaySection('auth-section');
-        return;
-    }
-    */
-
-    const itemsInOrder = Object.values(cart).map(item => ({
-        productId: item.id,
-        productTitle: item.title,
-        productPrice: item.price,
-        productImageUrl: item.imageUrl,
-        quantity: item.quantity,
-        subTotal: (item.price || 0) * item.quantity
-    }));
-
-    const customerEmailForCheckout = user ? user.email : "guest@example.com";
-    const customerNameForCheckout = user ? (user.displayName || user.email) : "Guest User"; // Placeholder
-    const customerAddressForCheckout = "N/A (Full checkout form not implemented)"; // Placeholder
-    const customerPhoneForCheckout = "N/A"; // Placeholder
-
-
-    const orderDetails = {
-        items: itemsInOrder,
-        totalAmount: parseFloat(cartTotalSpan ? cartTotalSpan.textContent : '0.00'),
-        customerName: customerNameForCheckout,
-        customerAddress: customerAddressForCheckout,
-        customerEmail: customerEmailForCheckout,
-        customerPhone: customerPhoneForCheckout,
-        orderDate: serverTimestamp(),
-        status: 'Pending'
-    };
-
-    try {
-        const newOrderRef = push(ref(database, 'orders'));
-        await set(newOrderRef, orderDetails);
-        showAlert('Checkout Complete!', 'Your cart items have been ordered. Thank you for your purchase!');
-        cart = {}; // Clear cart after successful checkout
-        saveCart();
-        renderCart(); // Update cart display
-        displaySection('product-listing-section'); // Redirect to product list
-    } catch (error) {
-        showAlert('Checkout Failed', `There was an error processing your checkout: ${error.message}`);
-        console.error("Checkout error:", error);
-    }
-}
-
-// --- Order History ---
-function loadOrderHistory() {
-    const user = auth.currentUser;
-    if (!user) {
-        if (orderHistoryList) orderHistoryList.innerHTML = '<p>Please login to view your order history.</p>';
-        return;
-    }
-
-    const ordersRef = ref(database, 'orders');
-    onValue(ordersRef, (snapshot) => {
-        if (!orderHistoryList) return;
-        orderHistoryList.innerHTML = ''; // Clear previous history
-        let hasOrders = false;
-        const ordersArray = [];
-        snapshot.forEach((childSnapshot) => {
-            const order = childSnapshot.val();
-            // Filter orders by the currently logged-in user's email
-            if (order.customerEmail && order.customerEmail === user.email) {
-                ordersArray.push({ id: childSnapshot.key, ...order });
-            }
-        });
-
-        if (ordersArray.length === 0) {
-            orderHistoryList.innerHTML = '<p>You have not placed any orders yet.</p>';
+    if (itemsFromCart) {
+        if (cart.length === 0) {
+            await showCustomAlert('Cart Empty', 'Your cart is empty. Add items before placing an order.');
             return;
         }
-
-        // Sort orders by date, newest first
-        ordersArray.sort((a, b) => {
-            const dateA = a.orderDate ? (a.orderDate.timestamp || a.orderDate) : 0;
-            const dateB = b.orderDate ? (b.orderDate.timestamp || b.orderDate) : 0;
-            return dateB - dateA;
+        orderItems = cart.map(item => ({
+            id: item.id,
+            title: item.title,
+            price: item.price,
+            quantity: item.quantity,
+            imageUrl: item.imageUrl
+        }));
+        orderTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    } else if (productDetails) {
+        orderItems.push({
+            id: productDetails.id,
+            title: productDetails.title,
+            price: productDetails.price,
+            quantity: productDetails.quantity,
+            imageUrl: productDetails.imageUrl
         });
+        orderTotal = productDetails.price * productDetails.quantity;
+    } else {
+        await showCustomAlert('Error', 'No items to order.');
+        return;
+    }
 
-        ordersArray.forEach(order => {
-            hasOrders = true;
-            const orderItemDiv = document.createElement('div');
-            orderItemDiv.classList.add('order-item');
+    const userAddress = await showPrompt('Enter your shipping address:', 'Shipping Address');
+    if (!userAddress) {
+        await showCustomAlert('Order Cancelled', 'Shipping address is required to place an order.');
+        return;
+    }
 
-            const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
+    const userPhone = await showPrompt('Enter your phone number:', 'Phone Number');
+    if (!userPhone) {
+        await showCustomAlert('Order Cancelled', 'Phone number is required to place an order.');
+        return;
+    }
 
-            let productInfoHtml = '';
-            // Check if it's a single product order or a multi-item cart order
-            if (order.productId) { // Single product order structure
-                productInfoHtml = `<p><strong>Product:</strong> ${order.productTitle}</p>
-                                   <p><strong>Quantity:</strong> ${order.quantity}</p>
-                                   <p><strong>Total:</strong> PKR ${order.totalAmount ? order.totalAmount.toFixed(2) : 'N/A'}</p>`;
-            } else if (order.items && Array.isArray(order.items)) { // Multi-item cart order structure
-                productInfoHtml = '<p><strong>Items:</strong></p><ul>';
-                order.items.forEach(item => {
-                    productInfoHtml += `<li>${item.productTitle} (x${item.quantity}) - PKR ${item.subTotal ? item.subTotal.toFixed(2) : 'N/A'}</li>`;
-                });
-                productInfoHtml += `</ul><p><strong>Total Order Amount:</strong> PKR ${order.totalAmount ? order.totalAmount.toFixed(2) : 'N/A'}</p>`;
-            }
+    const orderId = push(ordersRef).key;
+    const orderData = {
+        orderId: orderId,
+        items: orderItems,
+        total: orderTotal,
+        timestamp: serverTimestamp(),
+        status: 'Pending',
+        customerAddress: userAddress,
+        customerPhone: userPhone
+    };
 
-
-            orderItemDiv.innerHTML = `
-                <h4>Order ID: ${order.id}</h4>
-                ${productInfoHtml}
-                <p><strong>Order Date:</strong> ${orderDate}</p>
-                <p><strong>Status:</strong> <span class="order-status">${order.status}</span></p>
-                <p><strong>Customer:</strong> ${order.customerName}</p>
-                <p><strong>Address:</strong> ${order.customerAddress}</p>
-                <p><strong>Email:</strong> ${order.customerEmail}</p>
-                <p><strong>Phone:</strong> ${order.customerPhone}</p>
-            `;
-            orderHistoryList.appendChild(orderItemDiv); // Append in order
-        });
-        if (!hasOrders) {
-            orderHistoryList.innerHTML = '<p>You have not placed any orders yet.</p>';
+    try {
+        await set(ref(database, `orders/${orderId}`), orderData);
+        await showCustomAlert('Order Placed!', 'Your order has been placed successfully. We will contact you soon.');
+        if (itemsFromCart) {
+            cart = []; // Clear cart after placing order
+            saveCart();
+            updateCartDisplay();
+            closeProductModal(); // Close modal if open
         }
-    }, (error) => {
-        console.error("Error loading order history:", error);
-        showAlert('Error', 'Failed to load order history.');
+    } catch (error) {
+        console.error("Error placing order: ", error);
+        await showCustomAlert('Order Failed', 'There was an error placing your order. Please try again.');
+    }
+}
+
+async function showPrompt(message, title = 'Input Required') {
+    return new Promise((resolve) => {
+        showCustomAlert(title, message, true); // Use confirm modal for prompt
+
+        customModalOkBtn.onclick = () => {
+            const inputElement = customModalMessage.querySelector('input');
+            const inputValue = inputElement ? inputElement.value : '';
+            customAlertModal.style.display = 'none';
+            resolve(inputValue);
+        };
+
+        customModalCancelBtn.onclick = () => {
+            customAlertModal.style.display = 'none';
+            resolve(null); // User cancelled
+        };
+
+        // Replace message with an input field
+        customModalMessage.innerHTML = `<p>${message}</p><input type="text" id="prompt-input" class="custom-modal-input" placeholder="${title}">`;
+        const promptInput = document.getElementById('prompt-input');
+        if (promptInput) {
+            promptInput.focus();
+            promptInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    customModalOkBtn.click();
+                }
+            });
+        }
     });
 }
 
 
-// --- Rating Functionality ---
-function openRatingModal() {
-    if (!currentProduct) {
-        showAlert('Error', 'No product selected for rating.');
-        return;
-    }
-    if (ratingProductTitle) ratingProductTitle.textContent = currentProduct.title;
-    selectedRating = 0; // Reset selected rating
-    updateRatingStars();
-    if (ratingCommentInput) ratingCommentInput.value = ''; // Clear comment
-    if (ratingModal) ratingModal.classList.add('active');
-    if (document.body) document.body.classList.add('no-scroll');
-}
-
-function closeRatingModal() {
-    if (ratingModal) ratingModal.classList.remove('active');
-    if (document.body) document.body.classList.remove('no-scroll');
-}
+// --- Rating Functions ---
 
 function updateRatingStars() {
-    if (!ratingStarsContainer) return;
-    Array.from(ratingStarsContainer.children).forEach((star, index) => {
-        if (index < selectedRating) {
+    ratingStarsContainer.querySelectorAll('.fa-star').forEach(star => {
+        const starRating = parseInt(star.dataset.rating);
+        if (starRating <= selectedRating) {
             star.classList.remove('far');
             star.classList.add('fas');
         } else {
@@ -806,185 +468,378 @@ function updateRatingStars() {
 }
 
 async function submitProductRating() {
-    if (!currentProduct || selectedRating === 0) {
-        showAlert('Error', 'Please select a rating (1-5 stars).');
+    if (!currentProduct) {
+        await showCustomAlert('Error', 'No product selected for rating.');
+        return;
+    }
+    if (selectedRating === 0) {
+        await showCustomAlert('Rating Required', 'Please select a star rating.');
         return;
     }
 
-    const user = auth.currentUser;
-    if (!user) {
-        showAlert('Login Required', 'You must be logged in to submit a rating.');
-        return;
-    }
+    const reviewText = ratingReviewText.value.trim();
+    const ratingId = push(ratingsRef).key;
 
     const ratingData = {
         productId: currentProduct.id,
-        userId: user.uid,
-        userName: user.email, // Or user.displayName if available
         rating: selectedRating,
-        comment: ratingCommentInput ? ratingCommentInput.value.trim() : '',
-        timestamp: serverTimestamp()
+        review: reviewText,
+        timestamp: serverTimestamp(),
+        // Potentially add userId if user authentication is implemented
     };
 
     try {
-        // Store ratings under product ID, then a unique ID for each rating
-        const newRatingRef = push(ref(database, `products/${currentProduct.id}/ratings`));
-        await set(newRatingRef, ratingData);
-        showAlert('Rating Submitted', 'Thank you for your feedback!');
+        await set(ref(database, `ratings/${ratingId}`), ratingData);
+        await showCustomAlert('Success', 'Thank you for your rating!');
         closeRatingModal();
-        // Reload product details to update average rating display
-        showProductDetail(currentProduct.id);
-        // Refresh product listing to reflect new ratings
-        loadProducts();
+        await loadProductRatings(currentProduct.id); // Reload ratings for the product
     } catch (error) {
-        showAlert('Submission Failed', `Error submitting rating: ${error.message}`);
-        console.error("Rating submission error:", error);
+        console.error("Error submitting rating:", error);
+        await showCustomAlert('Error', 'Failed to submit rating. Please try again.');
     }
 }
 
-// --- Custom Alert Modal ---
-function showAlert(title, message) {
-    if (customModalTitle) customModalTitle.textContent = title;
-    if (customModalMessage) customModalMessage.textContent = message;
-    if (customAlertModal) customAlertModal.classList.add('active');
-    if (document.body) document.body.classList.add('no-scroll'); // Add no-scroll to body for alert
+async function loadProductRatings(productId) {
+    const productRatingsRef = ref(database, 'ratings');
+    onValue(productRatingsRef, (snapshot) => {
+        const allRatings = snapshot.val();
+        const ratingsForProduct = [];
+        if (allRatings) {
+            for (const key in allRatings) {
+                if (allRatings[key].productId === productId) {
+                    ratingsForProduct.push(allRatings[key]);
+                }
+            }
+        }
+        renderProductRatings(ratingsForProduct);
+    }, {
+        onlyOnce: true // Fetch once to avoid constant updates while modal is open
+    });
 }
 
-function closeAlertModal() {
-    if (customAlertModal) customAlertModal.classList.remove('active');
-    if (document.body) document.body.classList.remove('no-scroll'); // Remove no-scroll from body after alert
+function renderProductRatings(ratings) {
+    let totalRating = 0;
+    const ratingCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+    ratings.forEach(r => {
+        totalRating += r.rating;
+        ratingCounts[r.rating]++;
+    });
+
+    const average = ratings.length > 0 ? (totalRating / ratings.length) : 0;
+    modalAverageRating.innerHTML = `Average Rating: <strong>${average.toFixed(1)} / 5</strong> (${ratings.length} reviews)`;
+
+    modalRatingBreakdown.innerHTML = '';
+    for (let i = 5; i >= 1; i--) {
+        const count = ratingCounts[i];
+        const percentage = ratings.length > 0 ? (count / ratings.length) * 100 : 0;
+        const barHtml = `
+            <div>
+                <span>${i} Star</span>
+                <div class="rating-bar-container">
+                    <div class="rating-bar" style="width: ${percentage}%"></div>
+                </div>
+                <span>(${count})</span>
+            </div>
+        `;
+        modalRatingBreakdown.insertAdjacentHTML('beforeend', barHtml);
+    }
 }
 
-// --- Order Confirmation Modal ---
-function showOrderConfirmationModal() {
-    if (orderConfirmationModal) orderConfirmationModal.classList.add('active');
-    if (document.body) document.body.classList.add('no-scroll'); // Add no-scroll to body for confirmation
+
+function openRatingModal() {
+    if (!currentProduct) {
+        showCustomAlert('Error', 'Please select a product to rate.');
+        return;
+    }
+    ratingProductTitle.textContent = currentProduct.title;
+    selectedRating = 0; // Reset selected rating
+    ratingReviewText.value = ''; // Clear review text
+    updateRatingStars();
+    ratingModal.style.display = 'flex';
 }
 
-function closeOrderConfirmationModal() {
-    if (orderConfirmationModal) orderConfirmationModal.classList.remove('active');
-    if (document.body) document.body.classList.remove('no-scroll'); // Remove no-scroll from body after confirmation
+function closeRatingModal() {
+    ratingModal.style.display = 'none';
+}
+
+// --- Data Loading from Firebase ---
+
+// Listen for products data
+onValue(productsRef, (snapshot) => {
+    products = [];
+    snapshot.forEach((childSnapshot) => {
+        products.push({ id: childSnapshot.key, ...childSnapshot.val() });
+    });
+    filterAndSortProducts(); // Re-render products when data changes
+});
+
+// Listen for categories data
+onValue(categoriesRef, (snapshot) => {
+    categories = [];
+    snapshot.forEach((childSnapshot) => {
+        categories.push({ id: childSnapshot.key, ...childSnapshot.val() });
+    });
+    populateCategoryFilters();
+});
+
+
+// --- Initialization ---
+
+function populateCategoryFilters() {
+    categoryFilters.innerHTML = '<button class="category-button active" data-category="all">All</button>';
+    categories.forEach(category => {
+        const button = document.createElement('button');
+        button.classList.add('category-button');
+        button.dataset.category = category.name;
+        button.textContent = category.name;
+        categoryFilters.appendChild(button);
+    });
+
+    document.querySelectorAll('.category-button').forEach(button => {
+        button.addEventListener('click', (event) => {
+            document.querySelectorAll('.category-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            filterAndSortProducts();
+        });
+    });
+}
+
+function setActiveNavLink() {
+    const sections = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop - 100; // Adjust offset for header height
+            const sectionHeight = section.clientHeight;
+            if (scrollY >= sectionTop && scrollY < sectionTop + sectionHeight) {
+                current = section.getAttribute('id');
+            }
+        });
+
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href').includes(current)) {
+                link.classList.add('active');
+            }
+        });
+    });
 }
 
 
 // --- Event Listeners ---
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial data load after auth state is checked
-    loadProducts(); // Load products regardless of auth state
-    loadCart(); // Load cart always
+    updateCartDisplay(); // Load cart on page load
+    setActiveNavLink(); // Set active nav link on scroll
 
-    // Navigation
-    if (homeLink) homeLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        displaySection('product-listing-section');
-    });
-
-    if (cartLink) cartLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        displaySection('cart-section');
-    });
-
-    if (orderHistoryLink) orderHistoryLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        displaySection('order-history-section');
-        loadOrderHistory(); // Ensure order history is loaded when navigating
-    });
-
-    // Auth
-    if (loginBtn) loginBtn.addEventListener('click', handleLogin);
-    if (signupBtn) signupBtn.addEventListener('click', handleSignUp);
-
-    // Search and Filter
-    if (searchButton) searchButton.addEventListener('click', filterAndSortProducts);
-    if (searchInput) searchInput.addEventListener('input', filterAndSortProducts); // Live search
-    if (sortSelect) sortSelect.addEventListener('change', filterAndSortProducts);
-
-    // Initial attachment of category filter click handlers (for hardcoded "All" button)
-    // Dynamic category buttons will have their listeners re-attached by populateCategoryFilters
-    document.querySelectorAll('.category-button').forEach(button => {
-        button.addEventListener('click', handleCategoryFilterClick);
-    });
-
-    // Cart
-    if (checkoutBtn) checkoutBtn.addEventListener('click', handleCheckout);
-
-    // Product Detail Modal
-    if (closeDetailModalBtn) closeDetailModalBtn.addEventListener('click', closeProductDetailModal);
-    if (productDetailModal) {
-        window.addEventListener('click', (event) => {
-            if (event.target === productDetailModal) {
-                closeProductDetailModal();
-            }
-        });
-    }
-
-    // Product Quantity in Detail Modal
-    if (decreaseQuantityBtn) decreaseQuantityBtn.addEventListener('click', () => {
-        if (productQuantityInput) {
-            let quantity = parseInt(productQuantityInput.value);
-            if (quantity > 1) {
-                productQuantityInput.value = quantity - 1;
-            }
+    // Login/Logout button visibility
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            loginLink.style.display = 'none';
+            adminLink.style.display = 'block';
+            logoutLink.style.display = 'block';
+        } else {
+            loginLink.style.display = 'block';
+            adminLink.style.display = 'none';
+            logoutLink.style.display = 'none';
         }
     });
 
-    if (increaseQuantityBtn) increaseQuantityBtn.addEventListener('click', () => {
-        if (productQuantityInput) {
-            let quantity = parseInt(productQuantityInput.value);
-            productQuantityInput.value = quantity + 1;
+    // Login modal
+    loginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginModal.style.display = 'flex';
+    });
+
+    closeLoginModalButton.addEventListener('click', () => {
+        loginModal.style.display = 'none';
+        loginErrorMessage.textContent = '';
+    });
+
+    loginModal.addEventListener('click', (event) => {
+        if (event.target === loginModal) {
+            loginModal.style.display = 'none';
+            loginErrorMessage.textContent = '';
         }
     });
 
-    if (addToCartModalBtn) addToCartModalBtn.addEventListener('click', () => {
-        if (currentProduct && productQuantityInput) {
-            const quantity = parseInt(productQuantityInput.value);
-            if (isNaN(quantity) || quantity <= 0) {
-                showAlert('Invalid Quantity', 'Please enter a valid quantity.');
-                return;
-            }
-            addToCart(currentProduct, quantity);
-            showAlert('Added to Cart', `${currentProduct.title} (x${quantity}) added to your cart.`);
-            closeProductDetailModal();
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = loginEmailInput.value;
+        const password = loginPasswordInput.value;
+
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            loginModal.style.display = 'none';
+            loginEmailInput.value = '';
+            loginPasswordInput.value = '';
+            loginErrorMessage.textContent = '';
+            window.location.href = 'admin.html'; // Redirect to admin page
+        } catch (error) {
+            console.error("Login failed:", error);
+            loginErrorMessage.textContent = 'Invalid email or password.';
         }
     });
 
-    // Place Order button in Product Detail Modal
-    // Initial listener to show form, not place order directly
-    if (placeOrderBtn) placeOrderBtn.addEventListener('click', handlePlaceOrderClick);
+    // Logout
+    logoutLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+            await signOut(auth);
+            showCustomAlert('Logged Out', 'You have been successfully logged out.');
+        } catch (error) {
+            console.error("Logout failed:", error);
+            showCustomAlert('Error', 'Failed to log out.');
+        }
+    });
 
-    // Custom Alert Modal
-    if (customModalOkBtn) customModalOkBtn.addEventListener('click', closeAlertModal);
-    if (customAlertModal) {
-        window.addEventListener('click', (event) => {
-            if (event.target === customAlertModal) {
-                closeAlertModal();
-            }
-        });
-    }
+    // Product modal close
+    closeProductModalButton.addEventListener('click', closeProductModal);
+    productModal.addEventListener('click', (event) => {
+        if (event.target === productModal) {
+            closeProductModal();
+        }
+    });
 
-    // Order Confirmation Modal
-    if (orderConfirmationOkBtn) orderConfirmationOkBtn.addEventListener('click', closeOrderConfirmationModal);
-    if (orderConfirmationModal) {
-        window.addEventListener('click', (event) => {
-            if (event.target === orderConfirmationModal) {
-                closeOrderConfirmationModal();
-            }
-        });
-    }
+    // Add to cart from modal
+    addToCartModalBtn.addEventListener('click', () => {
+        if (currentProduct) {
+            const quantity = parseInt(modalProductQuantity.value);
+            addToCart(currentProduct.id, quantity);
+            showCustomAlert('Added to Cart', `${quantity} x ${currentProduct.title} added to your cart!`);
+            closeProductModal();
+        }
+    });
+
+    // Place order from modal (single product)
+    placeOrderModalBtn.addEventListener('click', () => {
+        if (currentProduct) {
+            const quantity = parseInt(modalProductQuantity.value);
+            const productToOrder = { ...currentProduct, quantity: quantity };
+            placeOrder(productToOrder, false); // false indicates not from cart
+            closeProductModal();
+        }
+    });
+
+
+    // Sort products
+    sortOptions.addEventListener('change', filterAndSortProducts);
 
     // Rating star click handler
-    if (ratingStarsContainer) {
-        ratingStarsContainer.addEventListener('click', (event) => {
-            const star = event.target.closest('.fa-star');
-            if (star) {
-                selectedRating = parseInt(star.dataset.rating);
-                updateRatingStars();
-            }
-        });
-    }
+    ratingStarsContainer.addEventListener('click', (event) => {
+        const star = event.target.closest('.fa-star');
+        if (star) {
+            selectedRating = parseInt(star.dataset.rating);
+            updateRatingStars();
+        }
+    });
 
     // Submit rating button
-    if (submitRatingButton) {
-        submitRatingButton.addEventListener('click', submitProductRating);
-    }
+    submitRatingButton.addEventListener('click', submitProductRating);
+
+    // Close rating modal
+    closeRatingModalBtn.addEventListener('click', closeRatingModal);
+    window.addEventListener('click', (event) => {
+        if (event.target === ratingModal) {
+            closeRatingModal();
+        }
+    });
+
+    // Rate product button in product modal
+    rateProductBtn.addEventListener('click', openRatingModal);
+
+    // Contact Form Submission
+    contactForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('contact-name').value;
+        const email = document.getElementById('contact-email').value;
+        const message = document.getElementById('contact-message').value;
+
+        try {
+            await push(messagesRef, {
+                name,
+                email,
+                message,
+                timestamp: serverTimestamp()
+            });
+            await showCustomAlert('Message Sent', 'Your message has been sent successfully!');
+            contactForm.reset();
+        } catch (error) {
+            console.error("Error sending message:", error);
+            await showCustomAlert('Error', 'Failed to send message. Please try again.');
+        }
+    });
+
+    // Navigation scroll to sections and highlight active link
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href').substring(1);
+            const targetSection = document.getElementById(targetId);
+
+            if (targetSection) {
+                // If it's the 'shop' link, show the shop section and update cart display
+                if (targetId === 'shop') {
+                    document.querySelectorAll('section').forEach(section => section.style.display = 'none');
+                    shopSection.style.display = 'block';
+                    updateCartDisplay();
+                } else {
+                    // Otherwise, show the relevant section and hide others
+                    document.querySelectorAll('section').forEach(section => {
+                        if (section.id === targetId) {
+                            section.style.display = 'block';
+                        } else if (section.id !== 'order-history-modal' && section.id !== 'login-modal' && section.id !== 'product-modal' && section.id !== 'rating-modal' && section.id !== 'custom-alert-modal') {
+                             section.style.display = 'none';
+                        }
+                    });
+                     // For regular sections, scroll into view
+                    targetSection.scrollIntoView({ behavior: 'smooth' });
+                }
+
+                // Update active class for navigation links
+                navLinks.forEach(nav => nav.classList.remove('active'));
+                link.classList.add('active');
+            }
+        });
+    });
+
+    // Initial load, show home section
+    document.getElementById('home').style.display = 'block';
+    document.getElementById('products').style.display = 'block';
+    document.querySelector('.nav-link[href="#home"]').classList.add('active');
+
+
+    // Toggle Order History visibility (if needed, this was commented out in index.html, keeping it here for completeness if you decide to add it back)
+    // if (toggleOrderHistoryBtn) {
+    //     toggleOrderHistoryBtn.addEventListener('click', () => {
+    //         if (orderHistorySection.style.display === 'block') {
+    //             orderHistorySection.style.display = 'none';
+    //             toggleOrderHistoryBtn.textContent = 'Show Order History';
+    //         } else {
+    //             orderHistorySection.style.display = 'block';
+    //             toggleOrderHistoryBtn.textContent = 'Hide Order History';
+    //             loadOrderHistory(); // Load when shown
+    //         }
+    //     });
+    // }
+
+    // Cart icon click to show shop section
+    cartIcon.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('section').forEach(section => section.style.display = 'none');
+        shopSection.style.display = 'block';
+        updateCartDisplay();
+
+        // Update active class for navigation links
+        navLinks.forEach(nav => nav.classList.remove('active'));
+        document.querySelector('.nav-link[href="#shop"]').classList.add('active');
+    });
+
+    // Place Cart Order button
+    placeCartOrderBtn.addEventListener('click', () => {
+        placeOrder(null, true); // true indicates from cart
+    });
 });
