@@ -1,99 +1,68 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getDatabase, ref, onValue, push, set, update, remove, serverTimestamp, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js"; // New import for Analytics
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getDatabase, ref, push, set, remove, onValue, serverTimestamp, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
-// Your web app's Firebase configuration (updated)
+
+// Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyBr6A2OGh-nwfMzOwmVOWs1-u5ylZ2Vemw",
-    authDomain: "hina-s-rootandbloomstore.firebaseapp.com",
-    databaseURL: "https://hina-s-rootandbloomstore-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "hina-s-rootandbloomstore",
-    storageBucket: "hina-s-rootandbloomstore.firebasestorage.app",
-    messagingSenderId: "967448486557",
-    appId: "1:967448486557:web:45a1fe8a4b14ec2fd22a74",
-    measurementId: "G-TT31HC3NZ3"
+  apiKey: "AIzaSyBr6A2OGh-nwfMzOwmVOWs1-u5ylZ2Vemw",
+  authDomain: "hina-s-rootandbloomstore.firebaseapp.com",
+  databaseURL: "https://hina-s-rootandbloomstore-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "hina-s-rootandbloomstore",
+  storageBucket: "hina-s-rootandbloomstore.firebasestorage.app",
+  messagingSenderId: "967448486557",
+  appId: "1:967448486557:web:45a1fe8a4b14ec2fd22a74",
+  measurementId: "G-TT31HC3NZ3"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const database = getDatabase(app);
-const storage = getStorage(app); // Initialize Firebase Storage
-const analytics = getAnalytics(app); // Initialize Firebase Analytics
+const storage = getStorage(app);
 
 // Admin UI Elements
 const authSection = document.getElementById('auth-section');
-const adminDashboard = document.getElementById('admin-dashboard');
 const adminEmailInput = document.getElementById('admin-email');
 const adminPasswordInput = document.getElementById('admin-password');
-const adminLoginBtn = document.getElementById('admin-login-btn');
-const adminLogoutBtn = document.getElementById('admin-logout-btn');
+const loginButton = document.getElementById('login-button');
+const logoutButton = document.getElementById('logout-button');
+const adminDashboard = document.getElementById('admin-dashboard');
 
-// Dashboard Summary Counts
-const totalProductsCountEl = document.getElementById('total-products-count');
-const pendingOrdersCountEl = document.getElementById('pending-orders-count');
-const completedOrdersCountEl = document.getElementById('completed-orders-count');
-
-// Product Form Elements
-const productIdInput = document.getElementById('product-id');
 const productTitleInput = document.getElementById('product-title');
-const productBrandInput = document.getElementById('product-brand');
 const productDescriptionInput = document.getElementById('product-description');
-const productCategorySelect = document.getElementById('product-category');
 const productPriceInput = document.getElementById('product-price');
 const productStockInput = document.getElementById('product-stock');
-const productFeaturedCheckbox = document.getElementById('product-featured');
-const productVideoInput = document.getElementById('product-video');
-const addEditProductBtn = document.getElementById('add-edit-product-btn');
-const clearFormBtn = document.getElementById('clear-form-btn');
-const productListContainer = document.getElementById('product-list-container');
-const adminProductSearchInput = document.getElementById('admin-product-search');
-const adminProductSearchBtn = document.getElementById('admin-product-search-btn');
-
-// Image Input Elements (updated for file inputs)
+const productBrandInput = document.getElementById('product-brand');
+const productCategorySelect = document.getElementById('product-category');
+// Updated to handle multiple image inputs
 const productImageInputs = [
-    document.getElementById('product-image-file-1'),
-    document.getElementById('product-image-file-2'),
-    document.getElementById('product-image-file-3'),
-    document.getElementById('product-image-file-4'),
-    document.getElementById('product-image-file-5'),
+    document.getElementById('product-image-1'),
+    document.getElementById('product-image-2'),
+    document.getElementById('product-image-3'),
+    document.getElementById('product-image-4'),
+    document.getElementById('product-image-5')
 ];
-const productImagePreviews = [
-    document.getElementById('product-image-preview-1'),
-    document.getElementById('product-image-preview-2'),
-    document.getElementById('product-image-preview-3'),
-    document.getElementById('product-image-preview-4'),
-    document.getElementById('product-image-preview-5'),
-];
-const productImagePlaceholders = [
-    document.getElementById('product-image-placeholder-1'),
-    document.getElementById('product-image-placeholder-2'),
-    document.getElementById('product-image-placeholder-3'),
-    document.getElementById('product-image-placeholder-4'),
-    document.getElementById('product-image-placeholder-5'),
-];
-const productImageRemoveBtns = [
-    document.getElementById('product-image-remove-1'),
-    document.getElementById('product-image-remove-2'),
-    document.getElementById('product-image-remove-3'),
-    document.getElementById('product-image-remove-4'),
-    document.getElementById('product-image-remove-5'),
-];
+const imagePreviewContainer = document.getElementById('image-preview-container');
+const productVideoUrlInput = document.getElementById('product-video-url');
+const productFeaturedCheckbox = document.getElementById('product-featured');
+const addProductButton = document.getElementById('add-product-button');
+const productList = document.getElementById('product-list');
 
-// Order Management Elements
-const orderListContainer = document.getElementById('order-list-container');
-const completedOrderListContainer = document.getElementById('completed-order-list-container');
+const orderList = document.getElementById('order-list');
 
-// Tab Navigation Elements
-const navTabs = document.querySelectorAll('.admin-nav-tab');
-const tabContents = document.querySelectorAll('.admin-tab-content');
-
-// Analytics Elements
 const analyticsTimeframeSelect = document.getElementById('analytics-timeframe');
-const refreshAnalyticsBtn = document.getElementById('refresh-analytics-btn');
-const productRatingsChartCanvas = document.getElementById('productRatingsChart');
+const totalProductsMetric = document.getElementById('total-products-metric');
+const totalOrdersMetric = document.getElementById('total-orders-metric');
+const pendingOrdersMetric = document.getElementById('pending-orders-metric');
+const totalRevenueMetric = document.getElementById('total-revenue-metric');
+const totalSalesSummary = document.getElementById('total-sales-summary');
+const totalOrdersSummary = document.getElementById('total-orders-summary');
+const avgRatingSummary = document.getElementById('avg-rating-summary');
 const winnerProductName = document.getElementById('winner-product-name');
 const winnerRatingInfo = document.getElementById('winner-rating-info');
 const winnerOrdersInfo = document.getElementById('winner-orders-info');
@@ -102,12 +71,21 @@ const compareProduct2Select = document.getElementById('compare-product-2');
 const compareProductsBtn = document.getElementById('compare-products-btn');
 const productComparisonChartCanvas = document.getElementById('productComparisonChart');
 
-let currentAdminUID = null;
-let allAdminProducts = {}; // To store all products for admin search
-let allRatings = {}; // To store all ratings for analytics
-let allOrders = {}; // To store all orders for analytics
-let productRatingsChart = null; // Chart.js instance for main ratings chart
-let productComparisonChart = null; // Chart.js instance for comparison chart
+// Chart instance
+let productComparisonChart;
+
+// Global data stores
+let allProducts = {};
+let allOrders = {};
+let allRatings = {};
+// Store File objects for new uploads and URLs for existing images
+let currentProductImageFiles = [null, null, null, null, null]; 
+
+// Define all possible categories
+const allCategories = [
+    "Fabric", "Organic", "Other Brands", "Other Products", "Perfumes", "Tools",
+    "electronics", "clothing", "books", "home", "beauty", "toys", "sports"
+];
 
 // --- Custom Alert/Confirm Functions ---
 const customAlertModal = document.getElementById('custom-alert-modal');
@@ -158,781 +136,502 @@ function showConfirm(message, title = 'Confirm Action', okButtonText = 'Yes', ca
             customModalCancelBtn.removeEventListener('click', cancelHandler);
             resolve(false);
         };
-
         customModalOkBtn.addEventListener('click', okHandler);
         customModalCancelBtn.addEventListener('click', cancelHandler);
     });
 }
 
-// --- Tab Navigation Logic ---
-navTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        navTabs.forEach(t => t.classList.remove('active'));
-        tabContents.forEach(c => c.classList.remove('active'));
 
-        tab.classList.add('active');
-        const targetTabId = tab.dataset.tab;
-        document.getElementById(targetTabId).classList.add('active');
-
-        // If switching to analytics tab, refresh data
-        if (targetTabId === 'analytics-tab') {
-            refreshAnalytics();
-        }
-    });
+// --- Firebase Authentication ---
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // User is signed in, display admin dashboard
+        authSection.style.display = 'none';
+        adminDashboard.style.display = 'block';
+        loadAdminData();
+    } else {
+        // User is signed out, display login form
+        authSection.style.display = 'flex';
+        adminDashboard.style.display = 'none';
+    }
 });
 
-// --- Image Preview Logic (for file inputs) ---
+loginButton.addEventListener('click', async () => {
+    const email = adminEmailInput.value;
+    const password = adminPasswordInput.value;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        showAlert("Logged in successfully!", "Success");
+    } catch (error) {
+        console.error("Login Error:", error);
+        showAlert(`Login Failed: ${error.message}`, "Error");
+    }
+});
+
+logoutButton.addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        showAlert("Logged out successfully!", "Success");
+    } catch (error) {
+        console.error("Logout Error:", error);
+        showAlert(`Logout Failed: ${error.message}`, "Error");
+    }
+});
+
+// --- Product Management ---
+function populateCategorySelect() {
+    productCategorySelect.innerHTML = '<option value="">Select a Category</option>';
+    allCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        productCategorySelect.appendChild(option);
+    });
+}
+
+// Event listener for all product image inputs
 productImageInputs.forEach((input, index) => {
     input.addEventListener('change', (event) => {
         const file = event.target.files[0];
-        const previewEl = productImagePreviews[index];
-        const placeholderEl = productImagePlaceholders[index];
-        const removeBtn = productImageRemoveBtns[index];
-
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                previewEl.src = e.target.result;
-                previewEl.style.display = 'block';
-                placeholderEl.style.display = 'none';
-                removeBtn.style.display = 'inline-block'; // Show remove button
-            };
-            reader.readAsDataURL(file);
+            currentProductImageFiles[index] = file; // Store the File object
         } else {
-            previewEl.style.display = 'none';
-            placeholderEl.style.display = 'flex';
-            removeBtn.style.display = 'none'; // Hide remove button
-            previewEl.src = ''; // Clear src
+            currentProductImageFiles[index] = null; // Clear if no file selected
         }
+        renderImagePreviews();
     });
 });
 
-// Remove Image Logic
-productImageRemoveBtns.forEach((button, index) => {
-    button.addEventListener('click', () => {
-        const fileInput = productImageInputs[index];
-        const previewEl = productImagePreviews[index];
-        const placeholderEl = productImagePlaceholders[index];
-        const removeBtn = productImageRemoveBtns[index];
-
-        fileInput.value = ''; // Clear the file input
-        previewEl.src = ''; // Clear the preview image
-        previewEl.style.display = 'none';
-        placeholderEl.style.display = 'flex';
-        removeBtn.style.display = 'none'; // Hide remove button
-    });
-});
-
-function resetImagePreviews() {
-    productImagePreviews.forEach(preview => {
-        preview.src = '';
-        preview.style.display = 'none';
-    });
-    productImagePlaceholders.forEach(placeholder => {
-        placeholder.style.display = 'flex';
-    });
-    productImageInputs.forEach(input => {
-        input.value = ''; // Clear file input
-    });
-    productImageRemoveBtns.forEach(btn => {
-        btn.style.display = 'none'; // Hide remove buttons
+// Function to render image previews based on currentProductImageFiles
+function renderImagePreviews() {
+    imagePreviewContainer.innerHTML = ''; // Clear existing previews
+    currentProductImageFiles.forEach((fileOrUrl, index) => {
+        if (fileOrUrl) {
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'image-preview';
+            const imageUrl = (typeof fileOrUrl === 'string') ? fileOrUrl : URL.createObjectURL(fileOrUrl);
+            previewDiv.innerHTML = `
+                <img src="${imageUrl}" alt="Image Preview">
+                <button class="remove-image-btn" data-index="${index}">×</button>
+            `;
+            imagePreviewContainer.appendChild(previewDiv);
+        }
     });
 }
 
-// --- Authentication Logic ---
-adminLoginBtn.addEventListener('click', async () => {
-    const email = adminEmailInput.value;
-    const password = adminPasswordInput.value;
-    adminLoginBtn.disabled = true;
-    adminLoginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+imagePreviewContainer.addEventListener('click', (event) => {
+    if (event.target.classList.contains('remove-image-btn')) {
+        const indexToRemove = parseInt(event.target.dataset.index);
+        currentProductImageFiles[indexToRemove] = null; // Clear the specific image slot
+        productImageInputs[indexToRemove].value = ''; // Clear the corresponding file input
+        renderImagePreviews(); // Re-render previews
+    }
+});
+
+
+addProductButton.addEventListener('click', async () => {
+    const title = productTitleInput.value;
+    const description = productDescriptionInput.value;
+    const price = parseFloat(productPriceInput.value);
+    const stock = parseInt(productStockInput.value);
+    const brand = productBrandInput.value;
+    const category = productCategorySelect.value;
+    const videoUrl = productVideoUrlInput.value;
+    const featured = productFeaturedCheckbox.checked;
+
+    if (!title || !description || isNaN(price) || isNaN(stock) || !brand || !category) {
+        showAlert("Please fill all product fields correctly.", "Validation Error");
+        return;
+    }
+
+    let imageUrls = [];
+    // Iterate through currentProductImageFiles (which can contain File objects or URLs)
+    for (let i = 0; i < currentProductImageFiles.length; i++) {
+        const fileOrUrl = currentProductImageFiles[i];
+        if (fileOrUrl) {
+            if (typeof fileOrUrl === 'string') {
+                imageUrls.push(fileOrUrl); // It's an existing URL, just add it
+            } else {
+                // It's a new File object, upload it
+                const imageRef = storageRef(storage, `product_images/${Date.now()}_${fileOrUrl.name}`);
+                await uploadBytes(imageRef, fileOrUrl);
+                const downloadURL = await getDownloadURL(imageRef);
+                imageUrls.push(downloadURL);
+            }
+        }
+    }
+    console.log("Final Image URLs to save:", imageUrls); // Debugging: Check URLs before saving
+
+    const productId = addProductButton.dataset.productId || push(ref(database, 'products/')).key; // Use existing ID for edit, new for add
+
+    const productData = {
+        id: productId,
+        title,
+        description,
+        price,
+        stock,
+        brand,
+        category,
+        imageUrls: imageUrls, // Save the array of URLs
+        videoUrl,
+        featured,
+        createdAt: serverTimestamp()
+    };
+
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        // UI update will be handled by onAuthStateChanged
+        await set(ref(database, `products/${productId}`), productData);
+        showAlert("Product saved successfully!", "Success");
+        clearProductForm();
+        loadProducts(); // Refresh list
     } catch (error) {
-        await showAlert('Login failed: ' + error.message, 'Login Error');
-        console.error('Login error:', error);
-    } finally {
-        adminLoginBtn.disabled = false;
-        adminLoginBtn.innerHTML = 'Login';
+        console.error("Error saving product:", error);
+        showAlert(`Failed to save product: ${error.message}`, "Error");
     }
 });
-
-adminLogoutBtn.addEventListener('click', async () => {
-    try {
-        await signOut(auth);
-        // UI will be updated by onAuthStateChanged listener
-    } catch (error) {
-        console.error('Logout error:', error);
-        await showAlert('Logout failed: ' + error.message, 'Logout Error');
-    }
-});
-
-onAuthStateChanged(auth, (user) => {
-    const adminUID = "vICdYRooH0SwXlnPDpBTluWDO9R2"; // Set your admin UID here
-    if (user && user.uid === adminUID) { // Check against UID instead of email
-        currentAdminUID = user.uid;
-        authSection.style.display = 'none';
-        adminDashboard.style.display = 'block';
-        // Manually click the dashboard tab to ensure it's active on login
-        document.querySelector('.admin-nav-tab[data-tab="dashboard-tab"]').click();
-        listenForProducts(); // Start listening for products when admin logs in
-        listenForOrders(); // Start listening for orders
-        listenForRatings(); // Start listening for ratings
-    } else {
-        currentAdminUID = null;
-        authSection.style.display = 'block';
-        adminDashboard.style.display = 'none';
-        // Clear any displayed products/orders when logged out
-        productListContainer.innerHTML = '<p class="no-items-message">No products available.</p>';
-        orderListContainer.innerHTML = '<p class="no-items-message">No pending orders.</p>';
-        completedOrderListContainer.innerHTML = '<p class="no-items-message">No completed orders yet.</p>';
-        updateDashboardCounts(0, 0, 0); // Reset dashboard counts
-        // Destroy charts if they exist
-        if (productRatingsChart) productRatingsChart.destroy();
-        if (productComparisonChart) productComparisonChart.destroy();
-    }
-});
-
-// --- Product Management Logic ---
-clearFormBtn.addEventListener('click', clearProductForm);
 
 function clearProductForm() {
-    productIdInput.value = '';
     productTitleInput.value = '';
-    productBrandInput.value = '';
     productDescriptionInput.value = '';
-    productCategorySelect.value = 'Fabric'; // Default category
     productPriceInput.value = '';
     productStockInput.value = '';
+    productBrandInput.value = '';
+    productCategorySelect.value = '';
+    productVideoUrlInput.value = '';
     productFeaturedCheckbox.checked = false;
-    productVideoInput.value = '';
-    resetImagePreviews(); // Clear all image previews and file inputs
-    addEditProductBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Add Product';
-    productTitleInput.focus();
+    addProductButton.textContent = 'Add Product';
+    addProductButton.dataset.productId = ''; // Clear product ID for next add operation
+
+    // Clear all image inputs and previews
+    productImageInputs.forEach(input => input.value = '');
+    currentProductImageFiles = [null, null, null, null, null];
+    imagePreviewContainer.innerHTML = '';
 }
 
-// Helper function to upload an image and return its URL
-async function uploadImageAndGetURL(file, productId) {
-    if (!file) return null;
-    const storageRefPath = `product_images/${productId}/${Date.now()}_${file.name}`; // Unique filename
-    const imageRef = storageRef(storage, storageRefPath);
-    const snapshot = await uploadBytes(imageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-}
-
-addEditProductBtn.addEventListener('click', async () => {
-    const id = productIdInput.value;
-    const title = productTitleInput.value.trim();
-    const brand = productBrandInput.value.trim();
-    const description = productDescriptionInput.value.trim();
-    const category = productCategorySelect.value;
-    const price = parseFloat(productPriceInput.value);
-    const stock = parseInt(productStockInput.value, 10);
-    const featured = productFeaturedCheckbox.checked;
-    const videoUrl = productVideoInput.value.trim();
-
-    // Collect existing image URLs (if editing) and new files to upload
-    const existingImageUrls = [];
-    const newFilesToUpload = [];
-
-    productImagePreviews.forEach((previewEl, index) => {
-        // If an existing image URL is displayed AND it's not a local FileReader URL (which starts with 'data:'),
-        // add it to existing URLs.
-        if (previewEl.style.display === 'block' && previewEl.src && previewEl.src.startsWith('http')) {
-            existingImageUrls.push(previewEl.src);
-        }
-    });
-
-    productImageInputs.forEach((input, index) => {
-        if (input.files && input.files[0]) {
-            newFilesToUpload.push(input.files[0]);
-        }
-    });
-
-
-    // Basic validation
-    if (!title || !description || !category || isNaN(price) || price <= 0 || isNaN(stock) || stock < 0 || (existingImageUrls.length === 0 && newFilesToUpload.length === 0)) {
-        await showAlert('Please fill in all required fields (Title, Description, Category, Price > 0, Stock >= 0, at least one image).', 'Validation Error');
-        return;
-    }
-
-    addEditProductBtn.disabled = true;
-    const originalButtonHTML = addEditProductBtn.innerHTML; // Store original button content
-    addEditProductBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-
-    let currentProductId = id;
-    if (!currentProductId) {
-        // Generate a temporary ID for new product to use in storage path, if not editing
-        const tempRef = push(ref(database, 'products'));
-        currentProductId = tempRef.key;
-    }
-
-    try {
-        // Upload new files to Firebase Storage
-        const uploadedImageUrls = await Promise.all(
-            newFilesToUpload.map((file) => uploadImageAndGetURL(file, currentProductId))
-        );
-
-        // Filter out nulls from failed uploads and combine with existing URLs
-        const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls.filter(url => url !== null)];
-
-        if (finalImageUrls.length === 0) {
-             await showAlert('No images were uploaded or existing images found. Please provide at least one image.', 'Image Required');
-             addEditProductBtn.disabled = false;
-             addEditProductBtn.innerHTML = originalButtonHTML; // Restore button state
-             return;
-        }
-
-        const productData = {
-            title,
-            brand: brand || 'N/A',
-            description,
-            category,
-            price,
-            stock,
-            images: finalImageUrls, // Use the collected URLs
-            videoUrl: videoUrl || '',
-            featured,
-            updatedAt: serverTimestamp()
-        };
-
-        if (id) {
-            // If editing, use the existing ID
-            productData.id = id;
-            await set(ref(database, 'products/' + id), productData);
-            await showAlert('Product updated successfully!', 'Success');
-        } else {
-            // If adding, use the generated temporary ID and set createdAt
-            productData.id = currentProductId;
-            productData.createdAt = serverTimestamp();
-            productData.totalStarsSum = 0; // Initialize for new products
-            productData.numberOfRatings = 0; // Initialize for new products
-            productData.averageRating = "0.00"; // Initialize for new products
-            await set(ref(database, 'products/' + currentProductId), productData);
-            await showAlert('Product added successfully!', 'Success');
-        }
-        clearProductForm(); // Clear form after successful add/edit
-    } catch (error) {
-        await showAlert('Error saving product: ' + error.message, 'Save Error');
-        console.error('Product save error:', error);
-    } finally {
-        addEditProductBtn.disabled = false;
-        addEditProductBtn.innerHTML = originalButtonHTML; // Always restore to original content
-    }
-});
-
-
-function displayAdminProducts(products) {
-    productListContainer.innerHTML = '';
-    if (Object.keys(products).length === 0) {
-        productListContainer.innerHTML = '<p class="no-items-message">No products available.</p>';
-        return;
-    }
-
-    const productListHtml = Object.values(products).map(product => {
-        const imageUrl = product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/65x65?text=No+Image';
-        const averageRating = product.numberOfRatings > 0 ? (product.totalStarsSum / product.numberOfRatings).toFixed(1) : 'N/A';
-        const ratingDisplay = product.numberOfRatings > 0 ? `Rating: ${averageRating}/7 (${product.numberOfRatings} reviews)` : 'No ratings yet';
-
-        return `
-            <div class="admin-product-item">
-                <img src="${imageUrl}" alt="${product.title}" onerror="this.onerror=null;this.src='https://via.placeholder.com/65x65?text=Error';">
-                <div class="admin-product-details">
-                    <h4>${product.title} (ID: ${product.id.substring(0, 6)}...)</h4>
-                    <p>${product.brand} - ${product.category}</p>
-                    <p>Price: PKR ${product.price.toLocaleString()}</p>
-                    <p class="product-stock-info">Stock: ${product.stock}</p>
-                    <p class="product-rating-info">${ratingDisplay}</p>
-                </div>
-                <div class="admin-product-actions">
-                    <button class="admin-button secondary edit-product-btn" data-id="${product.id}"><i class="fas fa-edit"></i> Edit</button>
-                    <button class="admin-button danger delete-product-btn" data-id="${product.id}"><i class="fas fa-trash"></i> Delete</button>
-                </div>
-            </div>
-        `;
-    }).join('');
-    productListContainer.innerHTML = productListHtml;
-
-    document.querySelectorAll('.edit-product-btn').forEach(button => {
-        button.addEventListener('click', (e) => editProduct(e.target.dataset.id));
-    });
-    document.querySelectorAll('.delete-product-btn').forEach(button => {
-        button.addEventListener('click', async (e) => {
-            const confirmed = await showConfirm(`Are you sure you want to delete product ${e.target.dataset.id.substring(0, 6)}...? This action cannot be undone.`, 'Confirm Deletion', 'Delete', 'Cancel', 'danger');
-            if (confirmed) {
-                deleteProduct(e.target.dataset.id);
-            }
-        });
-    });
-}
-
-function listenForProducts() {
-    const productsRef = ref(database, 'products');
+function loadProducts() {
+    const productsRef = ref(database, 'products/');
     onValue(productsRef, (snapshot) => {
-        allAdminProducts = snapshot.val() || {};
-        displayAdminProducts(allAdminProducts);
-        updateDashboardCounts(Object.keys(allAdminProducts).length, pendingOrdersCountEl.textContent, completedOrdersCountEl.textContent);
-        populateProductSelects(); // Update product selects for analytics
+        allProducts = {};
+        productList.innerHTML = '';
+        if (!snapshot.exists()) {
+            productList.innerHTML = '<p>No products added yet.</p>';
+            updateDashboardMetrics();
+            return;
+        }
+        snapshot.forEach((childSnapshot) => {
+            const product = childSnapshot.val();
+            allProducts[product.id] = product;
+            displayProductListItem(product);
+        });
+        updateDashboardMetrics();
+        populateComparisonSelects();
     }, (error) => {
-        console.error("Error listening for products:", error);
-        productListContainer.innerHTML = `<p class="no-items-message error-message">Error loading products. Firebase: ${error.message}. Check console and Firebase rules.</p>`;
-        showAlert(`Error loading products: ${error.message}. Check console and Firebase rules.`, 'Data Error');
+        console.error("Error loading products:", error);
+        showAlert("Failed to load products.", "Error");
     });
 }
 
-adminProductSearchBtn.addEventListener('click', () => {
-    const searchTerm = adminProductSearchInput.value.toLowerCase().trim();
-    if (!searchTerm) {
-        displayAdminProducts(allAdminProducts);
-        return;
-    }
-    const filtered = {};
-    for (const productId in allAdminProducts) {
-        const product = allAdminProducts[productId];
-        if (
-            (product.title && product.title.toLowerCase().includes(searchTerm)) ||
-            (productId && productId.toLowerCase().includes(searchTerm)) ||
-            (product.brand && product.brand.toLowerCase().includes(searchTerm))
-        ) {
-            filtered[productId] = product;
+function displayProductListItem(product) {
+    const listItem = document.createElement('div');
+    listItem.className = 'product-list-item';
+    listItem.innerHTML = `
+        <div class="product-info">
+            <h4>${product.title}</h4>
+            <p>Price: PKR ${product.price.toLocaleString()}</p>
+            <p>Stock: ${product.stock}</p>
+            <p>Category: ${product.category}</p>
+        </div>
+        <div class="product-actions">
+            <button class="admin-button info edit-product-btn" data-product-id="${product.id}"><i class="fas fa-edit"></i> Edit</button>
+            <button class="admin-button error delete-product-btn" data-product-id="${product.id}"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+    `;
+    productList.appendChild(listItem);
+}
+
+productList.addEventListener('click', async (event) => {
+    if (event.target.classList.contains('edit-product-btn')) {
+        const productId = event.target.dataset.productId;
+        loadProductForEdit(productId);
+    } else if (event.target.classList.contains('delete-product-btn')) {
+        const productId = event.target.dataset.productId;
+        const confirmDelete = await showConfirm("Are you sure you want to delete this product?", "Confirm Delete", "Delete", "Cancel", "danger");
+        if (confirmDelete) {
+            deleteProduct(productId);
         }
     }
-    displayAdminProducts(filtered);
 });
 
-adminProductSearchInput.addEventListener('keyup', (event) => {
-    if (event.key === "Enter") {
-        adminProductSearchBtn.click();
-    }
-    if (adminProductSearchInput.value.trim() === '') {
-        displayAdminProducts(allAdminProducts);
-    }
-});
-
-
-function editProduct(id) {
-    const product = allAdminProducts[id];
+function loadProductForEdit(productId) {
+    const product = allProducts[productId];
     if (product) {
-        productIdInput.value = product.id;
-        productTitleInput.value = product.title || '';
-        productBrandInput.value = product.brand || '';
-        productDescriptionInput.value = product.description || '';
-        productCategorySelect.value = product.category || 'Fabric'; // Set default if category is missing
-        productPriceInput.value = product.price || '';
-        productStockInput.value = typeof product.stock === 'number' ? product.stock : '0';
+        productTitleInput.value = product.title;
+        productDescriptionInput.value = product.description;
+        productPriceInput.value = product.price;
+        productStockInput.value = product.stock;
+        productBrandInput.value = product.brand;
+        productCategorySelect.value = product.category;
+        productVideoUrlInput.value = product.videoUrl || '';
         productFeaturedCheckbox.checked = product.featured || false;
-        productVideoInput.value = product.videoUrl || '';
+        addProductButton.textContent = 'Update Product';
+        addProductButton.dataset.productId = productId; // Set ID for update
 
-        resetImagePreviews(); // Clear all current previews and file inputs first
+        // Clear and populate image inputs/previews
+        productImageInputs.forEach(input => input.value = ''); // Clear file inputs
+        currentProductImageFiles = [null, null, null, null, null]; // Reset stored files/URLs
 
-        if (product.images && product.images.length > 0) {
-            product.images.forEach((url, index) => {
-                if (index < productImagePreviews.length) {
-                    const previewEl = productImagePreviews[index];
-                    const placeholderEl = productImagePlaceholders[index];
-                    const removeBtn = productImageRemoveBtns[index];
-
-                    previewEl.src = url;
-                    previewEl.style.display = 'block';
-                    placeholderEl.style.display = 'none';
-                    removeBtn.style.display = 'inline-block'; // Show remove button for existing image
-
-                    previewEl.onerror = () => { // Fallback if existing image URL fails to load
-                        previewEl.style.display = 'none';
-                        placeholderEl.style.display = 'flex';
-                        removeBtn.style.display = 'none'; // Hide remove button if image is broken
-                        previewEl.src = ''; // Clear src
-                        showAlert(`Failed to load image for ${product.title}. Please check the URL or re-upload.`, 'Image Load Error');
-                    };
+        if (product.imageUrls && Array.isArray(product.imageUrls)) {
+            product.imageUrls.forEach((url, index) => {
+                if (index < 5) { // Only load up to 5 images
+                    currentProductImageFiles[index] = url; // Store URL for existing images
                 }
             });
         }
-        addEditProductBtn.innerHTML = '<i class="fas fa-save"></i> Update Product';
-        const productTab = document.querySelector('.admin-nav-tab[data-tab="product-management-tab"]');
-        if (productTab) productTab.click();
-        productTitleInput.focus();
-        productIdInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        renderImagePreviews(); // Render previews based on currentProductImageFiles
     } else {
-        showAlert('Product not found. It might have been deleted.', 'Product Not Found');
-        clearProductForm();
+        showAlert("Product not found for editing.", "Error");
     }
 }
 
-async function deleteProduct(id) {
+async function deleteProduct(productId) {
     try {
-        // TODO: Optionally delete images from Firebase Storage here as well
-        // This requires listing items in a folder, which can be complex if not using specific file paths.
-        // For now, only deleting database entry.
-
-        await remove(ref(database, 'products/' + id));
-        await showAlert('Product deleted successfully!', 'Success');
+        await remove(ref(database, `products/${productId}`));
+        showAlert("Product deleted successfully!", "Success");
+        loadProducts(); // Refresh list
     } catch (error) {
-        await showAlert('Error deleting product: ' + error.message, 'Delete Error');
-        console.error('Product delete error:', error);
+        console.error("Error deleting product:", error);
+        showAlert(`Failed to delete product: ${error.message}`, "Error");
     }
 }
 
-
-// --- Order Management Logic ---
-function listenForOrders() {
-    const ordersRef = ref(database, 'orders');
+// --- Order Management ---
+function loadOrders() {
+    const ordersRef = ref(database, 'orders/');
     onValue(ordersRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        allOrders = data; // Store all orders for analytics
-        const pendingOrders = {};
-        const completedOrders = {};
-
-        for (const orderId in allOrders) {
-            const order = { id: orderId, ...allOrders[orderId] };
-            if (order.status === 'completed' || order.status === 'cancelled') {
-                completedOrders[orderId] = order;
-            } else {
-                pendingOrders[orderId] = order;
-            }
+        allOrders = {};
+        orderList.innerHTML = '';
+        if (!snapshot.exists()) {
+            orderList.innerHTML = '<p>No orders received yet.</p>';
+            updateDashboardMetrics();
+            return;
         }
-
-        displayOrders(pendingOrders, orderListContainer, false);
-        displayOrders(completedOrders, completedOrderListContainer, true);
-
-        updateDashboardCounts(totalProductsCountEl.textContent, Object.keys(pendingOrders).length, Object.keys(completedOrders).length);
-
+        snapshot.forEach((childSnapshot) => {
+            const order = childSnapshot.val();
+            order.id = childSnapshot.key; // Store the Firebase key as order ID
+            allOrders[order.id] = order;
+            displayOrderListItem(order);
+        });
+        updateDashboardMetrics();
     }, (error) => {
-        console.error("Error listening for orders:", error);
-        orderListContainer.innerHTML = `<p class="no-items-message error-message">Error loading orders. Firebase: ${error.message}.</p>`;
-        completedOrderListContainer.innerHTML = `<p class="no-items-message error-message">Error loading completed orders. Firebase: ${error.message}.</p>`;
-        showAlert(`Error loading orders: ${error.message}.`, 'Data Error');
+        console.error("Error loading orders:", error);
+        showAlert("Failed to load orders.", "Error");
     });
 }
 
-function displayOrders(orders, containerEl, isCompletedTab) {
-    containerEl.innerHTML = '';
-    if (Object.keys(orders).length === 0) {
-        containerEl.innerHTML = `<p class="no-items-message">No ${isCompletedTab ? 'completed' : 'pending'} orders.</p>`;
-        return;
+function displayOrderListItem(order) {
+    const listItem = document.createElement('div');
+    listItem.className = 'order-list-item';
+    const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
+    listItem.innerHTML = `
+        <div class="order-info">
+            <h4>Order ID: ${order.id}</h4>
+            <p>Product: ${order.productTitle} (x${order.quantity})</p>
+            <p>Total: PKR ${order.totalPrice.toLocaleString()}</p>
+            <p>Date: ${orderDate}</p>
+            <p>User: ${order.userEmail || order.userId}</p>
+        </div>
+        <div class="order-actions">
+            <select class="order-status-select" data-order-id="${order.id}">
+                <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+                <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Completed</option>
+                <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+            </select>
+            <button class="admin-button error delete-order-btn" data-order-id="${order.id}"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+    `;
+    orderList.appendChild(listItem);
+}
+
+orderList.addEventListener('change', async (event) => {
+    if (event.target.classList.contains('order-status-select')) {
+        const orderId = event.target.dataset.orderId;
+        const newStatus = event.target.value;
+        await updateOrderStatus(orderId, newStatus);
     }
+});
 
-    const orderListHtml = Object.values(orders).sort((a, b) => {
-        // Sort by timestamp, newest first
-        const dateA = new Date(a.orderDate || 0);
-        const dateB = new Date(b.orderDate || 0);
-        return dateB - dateA;
-    }).map(order => {
-        const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
-        const productTitles = order.items ? Object.values(order.items).map(item => `${item.title} (x${item.quantity})`).join(', ') : (order.productTitle || 'Product Name Missing'); // Fallback to productTitle from order
-        const orderStatusClass = order.status || 'pending'; // Default to pending if status is missing
-        let actionsHtml = '';
-
-        if (!isCompletedTab) {
-            actionsHtml = `
-                <div class="order-actions">
-                    <button class="admin-button success mark-completed" data-order-id="${order.id}"><i class="fas fa-check-circle"></i> Mark Completed</button>
-                    <button class="admin-button danger mark-cancelled" data-order-id="${order.id}"><i class="fas fa-times-circle"></i> Cancel Order</button>
-                </div>
-            `;
-        } else {
-            let processedDateString = 'Processing date N/A';
-            if (order.completedDate) {
-                processedDateString = new Date(order.completedDate).toLocaleString();
-            } else if (order.orderDate) { // Fallback for completed orders that might miss completedDate (e.g. old data)
-                processedDateString = `(Ordered: ${new Date(order.orderDate).toLocaleString()})`;
-            }
-            actionsHtml = `<p><em>Order processed on: ${processedDateString}</em></p>`;
+orderList.addEventListener('click', async (event) => {
+    if (event.target.classList.contains('delete-order-btn')) {
+        const orderId = event.target.dataset.orderId;
+        const confirmDelete = await showConfirm("Are you sure you want to delete this order?", "Confirm Delete", "Delete", "Cancel", "danger");
+        if (confirmDelete) {
+            deleteOrder(orderId);
         }
-
-        return `
-            <div class="order-item">
-                <h4>Order ID: ${order.id.substring(0, 6)}... for ${order.customerName || 'N/A'}</h4>
-                <p><strong>Products:</strong> ${productTitles}</p>
-                <p><strong>Total Amount:</strong> PKR ${order.totalAmount ? order.totalAmount.toLocaleString() : '0.00'}</p>
-                <p><strong>Status:</strong> <span class="status ${orderStatusClass}">${orderStatusClass}</span></p>
-                <p><strong>Order Date:</strong> ${orderDate}</p>
-                <p><strong>Address:</strong> ${order.customerAddress || 'N/A'}</p>
-                <p><strong>Contact:</strong> ${order.customerContact || 'N/A'}</p>
-                ${actionsHtml}
-            </div>
-        `;
-    }).join('');
-    containerEl.innerHTML = orderListHtml;
-
-    if (!isCompletedTab) {
-        document.querySelectorAll('.mark-completed').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                const confirmed = await showConfirm(`Are you sure you want to mark order ...${e.target.dataset.orderId.substring(e.target.dataset.orderId.length - 6)} as completed?`, 'Confirm Completion');
-                if (confirmed) {
-                    completeOrder(e.target.dataset.orderId);
-                }
-            });
-        });
-        document.querySelectorAll('.mark-cancelled').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                const confirmed = await showConfirm(`Are you sure you want to cancel and delete order ...${e.target.dataset.orderId.substring(e.target.dataset.orderId.length - 6)}? This action cannot be undone.`, 'Confirm Cancellation', 'Cancel Order', 'No', 'danger');
-                if (confirmed) {
-                    cancelOrder(e.target.dataset.orderId);
-                }
-            });
-        });
     }
-}
+});
 
-async function completeOrder(orderId) {
-    if (!orderId) {
-        await showAlert('Error: Order ID is missing for completion.', 'Error');
-        return;
-    }
-
+async function updateOrderStatus(orderId, status) {
     try {
-        const orderRef = ref(database, 'orders/' + orderId);
-        const snapshot = await get(orderRef);
-        const orderData = snapshot.val();
-
-        if (orderData) {
-            // Update status and add completion timestamp
-            await update(orderRef, {
-                status: 'completed',
-                completedDate: serverTimestamp() // Add completion timestamp
-            });
-            await showAlert(`Order ...${orderId.substring(orderId.length - 6)} marked as completed and moved to history.`, 'Order Completed');
-        } else {
-            await showAlert('Order not found in pending list. It might have been processed already or does not exist.', 'Order Not Found');
-        }
+        await update(ref(database, `orders/${orderId}`), { status: status });
+        showAlert(`Order ${orderId} status updated to ${status}!`, "Success");
     } catch (error) {
-        await showAlert('Error completing order: ' + error.message, 'Completion Error');
-        console.error('Order completion error:', error);
+        console.error("Error updating order status:", error);
+        showAlert(`Failed to update order status: ${error.message}`, "Error");
     }
 }
 
-async function cancelOrder(orderId) {
-    if (!orderId) {
-        await showAlert('Error: Order ID is missing for cancellation.', 'Error');
-        return;
-    }
+async function deleteOrder(orderId) {
     try {
-        await remove(ref(database, 'orders/' + orderId));
-        await showAlert(`Order ...${orderId.substring(orderId.length - 6)} has been cancelled and removed.`, 'Order Cancelled');
+        await remove(ref(database, `orders/${orderId}`));
+        showAlert("Order deleted successfully!", "Success");
+        loadOrders(); // Refresh list
     } catch (error) {
-        await showAlert('Error cancelling order: ' + error.message, 'Cancellation Error');
-        console.error('Order cancellation error:', error);
+        console.error("Error deleting order:", error);
+        showAlert(`Failed to delete order: ${error.message}`, "Error");
     }
 }
 
-// --- Dashboard Summary Updates ---
-function updateDashboardCounts(productsCount, pendingCount, completedCount) {
-    totalProductsCountEl.textContent = productsCount || 0;
-    pendingOrdersCountEl.textContent = pendingCount || 0;
-    completedOrdersCountEl.textContent = completedCount || 0;
-}
-
-// --- Analytics Logic ---
-function listenForRatings() {
-    const ratingsRef = ref(database, 'ratings');
+// --- Rating Management ---
+function loadRatings() {
+    const ratingsRef = ref(database, 'productRatings/');
     onValue(ratingsRef, (snapshot) => {
-        allRatings = snapshot.val() || {};
-        refreshAnalytics(); // Refresh analytics whenever ratings change
+        allRatings = {};
+        snapshot.forEach((productRatingSnapshot) => {
+            const productId = productRatingSnapshot.key;
+            allRatings[productId] = {};
+            productRatingSnapshot.forEach((userRatingSnapshot) => {
+                const userId = userRatingSnapshot.key;
+                allRatings[productId][userId] = userRatingSnapshot.val();
+            });
+        });
+        updateDashboardMetrics(); // Recalculate avg rating
+        updateAnalytics(); // Update analytics charts
     }, (error) => {
-        console.error("Error listening for ratings:", error);
-        showAlert(`Error loading ratings data: ${error.message}.`, 'Data Error');
+        console.error("Error loading ratings:", error);
     });
 }
 
-refreshAnalyticsBtn.addEventListener('click', refreshAnalytics);
-analyticsTimeframeSelect.addEventListener('change', refreshAnalytics);
-compareProductsBtn.addEventListener('click', renderComparisonChart);
+// --- Analytics ---
+analyticsTimeframeSelect.addEventListener('change', updateAnalytics);
+compareProductsBtn.addEventListener('click', updateAnalytics);
 
+function updateDashboardMetrics() {
+    const totalProducts = Object.keys(allProducts).length;
+    totalProductsMetric.textContent = totalProducts;
 
-function refreshAnalytics() {
-    const timeframe = analyticsTimeframeSelect.value;
-    const filteredRatings = filterRatingsByTimeframe(timeframe);
-
-    renderProductRatingsChart(filteredRatings);
-    updateWinnerOfTheWeek(filteredRatings);
-    populateProductSelects(); // Ensure selects are updated with latest products
-    renderComparisonChart(); // Re-render comparison chart with potentially new data
-}
-
-function filterRatingsByTimeframe(timeframe) {
-    const now = Date.now();
-    let cutoffDate = 0; // All time
-
-    if (timeframe === 'week') {
-        cutoffDate = now - (7 * 24 * 60 * 60 * 1000); // 7 days ago
-    } else if (timeframe === 'month') {
-        cutoffDate = now - (30 * 24 * 60 * 60 * 1000); // 30 days ago
-    }
-
-    const filtered = {};
-    for (const ratingId in allRatings) {
-        const rating = allRatings[ratingId];
-        // Firebase server timestamps are objects, convert to milliseconds
-        const ratingTimestamp = rating.timestamp && rating.timestamp.hasOwnProperty(' sentado') ? rating.timestamp.sentado : rating.timestamp;
-        if (ratingTimestamp >= cutoffDate) {
-            filtered[ratingId] = rating;
-        }
-    }
-    return filtered;
-}
-
-function getProductAggregates(ratings) {
-    const productAggregates = {}; // { productId: { totalStars: X, count: Y, orders: Z } }
-
-    // Aggregate ratings
-    for (const ratingId in ratings) {
-        const rating = ratings[ratingId];
-        if (!productAggregates[rating.productId]) {
-            productAggregates[rating.productId] = { totalStars: 0, count: 0, orderCount: 0 };
-        }
-        productAggregates[rating.productId].totalStars += rating.stars;
-        productAggregates[rating.productId].count += 1;
-    }
-
-    // Aggregate order counts for products within the same timeframe as ratings
-    const timeframe = analyticsTimeframeSelect.value;
-    const now = Date.now();
-    let orderCutoffDate = 0;
-
-    if (timeframe === 'week') {
-        orderCutoffDate = now - (7 * 24 * 60 * 60 * 1000);
-    } else if (timeframe === 'month') {
-        orderCutoffDate = now - (30 * 24 * 60 * 60 * 1000);
-    }
+    let totalOrders = 0;
+    let pendingOrders = 0;
+    let totalRevenue = 0;
 
     for (const orderId in allOrders) {
         const order = allOrders[orderId];
-        // Firebase server timestamps are objects, convert to milliseconds
+        totalOrders++;
+        if (order.status === 'pending') {
+            pendingOrders++;
+        }
+        totalRevenue += order.totalPrice || 0;
+    }
+
+    totalOrdersMetric.textContent = totalOrders;
+    pendingOrdersMetric.textContent = pendingOrders;
+    totalRevenueMetric.textContent = `PKR ${totalRevenue.toLocaleString()}`;
+
+    updateAnalytics(); // Ensure analytics are updated with latest data
+}
+
+function updateAnalytics() {
+    const timeframe = analyticsTimeframeSelect.value;
+    const now = Date.now();
+    let cutoffDate = 0;
+
+    if (timeframe === 'week') {
+        cutoffDate = now - (7 * 24 * 60 * 60 * 1000);
+    } else if (timeframe === 'month') {
+        cutoffDate = now - (30 * 24 * 60 * 60 * 1000);
+    }
+
+    let currentTotalSales = 0;
+    let currentTotalOrders = 0;
+    let productSales = {}; // {productId: count}
+    let productRatingsCount = {}; // {productId: {sum: 0, count: 0}}
+
+    for (const orderId in allOrders) {
+        const order = allOrders[orderId];
         const orderTimestamp = order.orderDate ? new Date(order.orderDate).getTime() : 0;
-
-        if (orderTimestamp >= orderCutoffDate && order.productId) {
-            if (!productAggregates[order.productId]) {
-                productAggregates[order.productId] = { totalStars: 0, count: 0, orderCount: 0 };
-            }
-            productAggregates[order.productId].orderCount += 1;
+        if (timeframe === 'all' || orderTimestamp >= cutoffDate) {
+            currentTotalSales += order.totalPrice || 0;
+            currentTotalOrders++;
+            productSales[order.productId] = (productSales[order.productId] || 0) + order.quantity;
         }
     }
 
-    // Calculate average rating and sort
-    const sortedProducts = Object.keys(productAggregates)
-        .map(productId => {
-            const aggregate = productAggregates[productId];
-            const product = allAdminProducts[productId];
-            const averageRating = aggregate.count > 0 ? (aggregate.totalStars / aggregate.count) : 0;
-            return {
-                id: productId,
-                title: product ? product.title : `Unknown Product (${productId.substring(0,6)}...)`,
-                averageRating: parseFloat(averageRating.toFixed(2)),
-                numberOfRatings: aggregate.count,
-                orderCount: aggregate.orderCount
-            };
-        })
-        .sort((a, b) => b.averageRating - a.averageRating); // Sort descending by average rating
-
-    return sortedProducts;
-}
-
-function renderProductRatingsChart(filteredRatings) {
-    const productData = getProductAggregates(filteredRatings);
-
-    const labels = productData.map(p => p.title);
-    const data = productData.map(p => p.averageRating);
-    const colors = labels.map((_, i) => `hsl(${i * 30}, 70%, 60%)`); // Dynamic colors
-
-    if (productRatingsChart) {
-        productRatingsChart.destroy(); // Destroy existing chart before creating a new one
-    }
-
-    productRatingsChart = new Chart(productRatingsChartCanvas, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Average Rating (out of 7)',
-                data: data,
-                backgroundColor: colors,
-                borderColor: colors.map(c => c.replace('70%', '50%').replace('60%', '50%')),
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: `Product Ratings - ${analyticsTimeframeSelect.options[analyticsTimeframeSelect.selectedIndex].text}`,
-                    font: { size: 18 }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y.toFixed(2);
-                            }
-                            const product = productData[context.dataIndex];
-                            if (product) {
-                                label += ` (${product.numberOfRatings} reviews, ${product.orderCount} orders)`;
-                            }
-                            return label;
-                        }
-                    }
+    for (const productId in allRatings) {
+        for (const userId in allRatings[productId]) {
+            const rating = allRatings[productId][userId];
+            const ratingTimestamp = rating.timestamp ? new Date(rating.timestamp).getTime() : 0;
+            if (timeframe === 'all' || ratingTimestamp >= cutoffDate) {
+                if (!productRatingsCount[productId]) {
+                    productRatingsCount[productId] = { sum: 0, count: 0 };
                 }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 7,
-                    title: {
-                        display: true,
-                        text: 'Average Rating'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Product'
-                    }
-                }
+                productRatingsCount[productId].sum += rating.rating;
+                productRatingsCount[productId].count++;
             }
         }
-    });
-}
-
-function updateWinnerOfTheWeek(filteredRatings) {
-    const productData = getProductAggregates(filteredRatings); // Already filtered by timeframe
-
-    // Find the product with the highest average rating and highest order count
-    let winner = null;
-    if (productData.length > 0) {
-        // Sort by average rating descending, then by order count descending
-        const sortedByRatingAndOrders = [...productData].sort((a, b) => {
-            if (b.averageRating !== a.averageRating) {
-                return b.averageRating - a.averageRating;
-            }
-            return b.orderCount - a.orderCount;
-        });
-        winner = sortedByRatingAndOrders[0];
     }
 
-    if (winner && winner.averageRating > 0) {
-        winnerProductName.textContent = winner.title;
-        winnerRatingInfo.textContent = `Average Rating: ${winner.averageRating.toFixed(2)}/7 (${winner.numberOfRatings} reviews)`;
-        winnerOrdersInfo.textContent = `Orders in timeframe: ${winner.orderCount}`;
+    totalSalesSummary.textContent = currentTotalSales.toLocaleString();
+    totalOrdersSummary.textContent = currentTotalOrders;
+
+    let overallAvgRating = 0;
+    let totalRatingSum = 0;
+    let totalRatingCount = 0;
+
+    for (const productId in productRatingsCount) {
+        totalRatingSum += productRatingsCount[productId].sum;
+        totalRatingCount += productRatingsCount[productId].count;
+    }
+
+    if (totalRatingCount > 0) {
+        overallAvgRating = (totalRatingSum / totalRatingCount).toFixed(1);
+    }
+    avgRatingSummary.textContent = overallAvgRating !== 0 ? `${overallAvgRating}/7` : 'N/A';
+
+
+    // Determine top product
+    let bestProduct = null;
+    let maxSales = 0;
+    for (const productId in productSales) {
+        if (productSales[productId] > maxSales) {
+            maxSales = productSales[productId];
+            bestProduct = allProducts[productId];
+        }
+    }
+
+    if (bestProduct) {
+        winnerProductName.textContent = bestProduct.title;
+        const currentProductRatingData = productRatingsCount[bestProduct.id];
+        if (currentProductRatingData && currentProductRatingData.count > 0) {
+            const avgRating = (currentProductRatingData.sum / currentProductRatingData.count).toFixed(1);
+            winnerRatingInfo.textContent = `Rating: ${avgRating}/7 (${currentProductRatingData.count} reviews)`;
+        } else {
+            winnerRatingInfo.textContent = `No ratings in selected timeframe.`;
+        }
+
+        const ordersCount = productSales[bestProduct.id] || 0;
+        winnerOrdersInfo.textContent = `Orders: ${ordersCount}`;
+
     } else {
-        winnerProductName.textContent = 'No clear winner this period.';
-        winnerRatingInfo.textContent = 'Not enough ratings or orders to determine a winner.';
-        winnerOrdersInfo.textContent = '';
+        winnerProductName.textContent = 'N/A';
+        winnerRatingInfo.textContent = 'No data for selected timeframe.';
+        winnerOrdersInfo.textContent = 'No data for selected timeframe.';
     }
+
+    updateProductComparisonChart();
 }
 
-function populateProductSelects() {
-    const productsArray = Object.values(allAdminProducts);
-    // Clear existing options
-    compareProduct1Select.innerHTML = '<option value="">Select Product</option>';
-    compareProduct2Select.innerHTML = '<option value="">Select Product</option>';
-
-    productsArray.forEach(product => {
+function populateComparisonSelects() {
+    compareProduct1Select.innerHTML = '<option value="">Select Product 1</option>';
+    compareProduct2Select.innerHTML = '<option value="">Select Product 2</option>';
+    Object.values(allProducts).forEach(product => {
         const option1 = document.createElement('option');
         option1.value = product.id;
         option1.textContent = product.title;
@@ -945,35 +644,76 @@ function populateProductSelects() {
     });
 }
 
-function renderComparisonChart() {
-    const product1Id = compareProduct1Select.value;
-    const product2Id = compareProduct2Select.value;
+function updateProductComparisonChart() {
+    const productId1 = compareProduct1Select.value;
+    const productId2 = compareProduct2Select.value;
 
-    if (!product1Id || !product2Id) {
-        if (productComparisonChart) productComparisonChart.destroy();
-        return;
+    const product1 = allProducts[productId1];
+    const product2 = allProducts[productId2];
+
+    const labels = ['Price', 'Stock', 'Average Rating'];
+    const data1 = [];
+    const data2 = [];
+
+    if (product1) {
+        data1.push(product1.price || 0);
+        data1.push(product1.stock || 0);
+        const p1Ratings = allRatings[productId1];
+        let p1AvgRating = 0;
+        if (p1Ratings) {
+            let sum = 0;
+            let count = 0;
+            for (const userId in p1Ratings) {
+                sum += p1Ratings[userId].rating;
+                count++;
+            }
+            if (count > 0) p1AvgRating = (sum / count).toFixed(1);
+        }
+        data1.push(p1AvgRating);
+    } else {
+        data1.push(0, 0, 0);
     }
 
-    const product1 = allAdminProducts[product1Id];
-    const product2 = allAdminProducts[product2Id];
-
-    if (!product1 || !product2) {
-        showAlert('Selected products not found.', 'Comparison Error');
-        if (productComparisonChart) productComparisonChart.destroy();
-        return;
+    if (product2) {
+        data2.push(product2.price || 0);
+        data2.push(product2.stock || 0);
+        const p2Ratings = allRatings[productId2];
+        let p2AvgRating = 0;
+        if (p2Ratings) {
+            let sum = 0;
+            let count = 0;
+            for (const userId in p2Ratings) {
+                sum += p2Ratings[userId].rating;
+                count++;
+            }
+            if (count > 0) p2AvgRating = (sum / count).toFixed(1);
+        }
+        data2.push(p2AvgRating);
+    } else {
+        data2.push(0, 0, 0);
     }
 
-    const labels = ['Average Rating', 'Number of Ratings', 'Order Count'];
-    const data1 = [
-        parseFloat(product1.averageRating || 0).toFixed(2),
-        product1.numberOfRatings || 0,
-        getOrdersForProductInTimeframe(product1.id, analyticsTimeframeSelect.value)
-    ];
-    const data2 = [
-        parseFloat(product2.averageRating || 0).toFixed(2),
-        product2.numberOfRatings || 0,
-        getOrdersForProductInTimeframe(product2.id, analyticsTimeframeSelect.value)
-    ];
+    const datasets = [];
+    if (product1) {
+        datasets.push({
+            label: product1.title,
+            data: data1,
+            backgroundColor: 'rgba(0, 188, 212, 0.6)',
+            // Fix: Use string literal for borderColor
+            borderColor: '#17a2b8', // Corresponds to --color-cyan-primary
+            borderWidth: 1
+        });
+    }
+    if (product2) {
+        datasets.push({
+            label: product2.title,
+            data: data2,
+            backgroundColor: 'rgba(233, 30, 99, 0.6)',
+            // Fix: Use string literal for borderColor
+            borderColor: '#e83e8c', // Corresponds to --color-pink-primary
+            borderWidth: 1
+        });
+    }
 
     if (productComparisonChart) {
         productComparisonChart.destroy();
@@ -983,87 +723,31 @@ function renderComparisonChart() {
         type: 'bar',
         data: {
             labels: labels,
-            datasets: [
-                {
-                    label: product1.title,
-                    data: data1,
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: product2.title,
-                    data: data2,
-                    backgroundColor: 'rgba(153, 102, 255, 0.6)',
-                    borderColor: 'rgba(153, 102, 255, 1)',
-                    borderWidth: 1
-                }
-            ]
+            datasets: datasets
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: `Comparison: ${product1.title} vs ${product2.title}`,
-                    font: { size: 18 }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y;
-                            }
-                            return label;
-                        }
-                    }
-                }
-            },
             scales: {
                 y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Value'
-                    }
+                    beginAtZero: true
                 }
             }
         }
     });
 }
 
-function getOrdersForProductInTimeframe(productId, timeframe) {
-    const now = Date.now();
-    let cutoffDate = 0;
 
-    if (timeframe === 'week') {
-        cutoffDate = now - (7 * 24 * 60 * 60 * 1000);
-    } else if (timeframe === 'month') {
-        cutoffDate = now - (30 * 24 * 60 * 60 * 1000);
-    }
-
-    let count = 0;
-    for (const orderId in allOrders) {
-        const order = allOrders[orderId];
-        const orderTimestamp = order.orderDate ? new Date(order.orderDate).getTime() : 0;
-        if (order.productId === productId && orderTimestamp >= cutoffDate) {
-            count++;
-        }
-    }
-    return count;
+// --- Initial Data Load ---
+function loadAdminData() {
+    populateCategorySelect();
+    loadProducts();
+    loadOrders();
+    loadRatings(); // Load ratings for analytics
 }
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (auth.currentUser && adminDashboard.style.display === 'block') {
-        // Already handled by onAuthStateChanged
-    } else if (!auth.currentUser) {
-        authSection.style.display = 'block';
-        adminDashboard.style.display = 'none';
-    }
+    // Initial check for auth state is handled by onAuthStateChanged
+    // No need to call loadAdminData here, as onAuthStateChanged will trigger it
 });
