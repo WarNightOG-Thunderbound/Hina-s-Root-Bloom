@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getDatabase, ref, push, set, remove, onValue, serverTimestamp, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
@@ -14,8 +14,8 @@ const firebaseConfig = {
   projectId: "hina-s-rootandbloomstore",
   storageBucket: "hina-s-rootandbloomstore.firebasestorage.app",
   messagingSenderId: "967448486557",
-  appId: "1:967448486557:web:45a1fe8a4b14ec2fd22a74",
-  measurementId: "G-TT31HC3NZ3"
+  appId: "1:967448486557:web:2c77a83709b6ffb40097a8",
+  measurementId: "G-CM67R9X13G"
 };
 
 // Initialize Firebase
@@ -25,593 +25,842 @@ const auth = getAuth(app);
 const database = getDatabase(app);
 const storage = getStorage(app);
 
-// Public UI Elements
-const productListingsContainer = document.getElementById('product-listings');
-const searchInput = document.getElementById('search-input');
-const searchButton = document.getElementById('search-button');
-const categoryFilterButtons = document.querySelectorAll('.category-button'); // For desktop filter buttons
-const sortBySelect = document.getElementById('sort-by-select');
+
+// --- DOM Elements ---
+const authModal = document.getElementById('auth-modal');
+const closeAuthModalButtons = authModal ? authModal.querySelectorAll('.close-button') : [];
+const authForm = document.getElementById('auth-form');
+const authEmailInput = document.getElementById('auth-email');
+const authPasswordInput = document.getElementById('auth-password');
+const authSubmitBtn = document.getElementById('auth-submit-btn');
+const authModalTitle = document.getElementById('auth-modal-title');
+const toggleAuthMode = document.getElementById('toggle-auth-mode');
+const loginSignupBtn = document.getElementById('login-signup-btn');
+const userProfileSection = document.getElementById('user-profile-section');
+const welcomeMessage = document.getElementById('welcome-message');
+const logoutBtn = document.getElementById('logout-btn');
+
+const productGrid = document.getElementById('product-grid');
 const productModal = document.getElementById('product-modal');
-const closeModalButton = document.querySelector('.close-button');
+const closeProductModalButtons = productModal ? productModal.querySelectorAll('.close-button') : [];
 const modalProductImage = document.getElementById('modal-product-image');
 const modalProductTitle = document.getElementById('modal-product-title');
-const modalProductPrice = document.getElementById('modal-product-price');
 const modalProductDescription = document.getElementById('modal-product-description');
-const modalProductBrand = document.getElementById('modal-product-brand');
-const modalProductCategory = document.getElementById('modal-product-category');
-const modalProductStock = document.getElementById('modal-product-stock');
+const modalProductPrice = document.getElementById('modal-product-price');
 const modalProductVideo = document.getElementById('modal-product-video');
-const productQuantityInput = document.getElementById('product-quantity');
-const addToCartButton = document.getElementById('add-to-cart-button');
-const placeOrderButton = document.getElementById('place-order-button');
+const addProductToCartBtn = document.getElementById('add-to-cart-modal-btn');
+const placeOrderModalBtn = document.getElementById('place-order-modal-btn');
+const rateProductBtn = document.getElementById('rate-product-btn');
+
+const cartIcon = document.getElementById('cart-icon');
+const cartCountSpan = document.getElementById('cart-count');
+const cartModal = document.getElementById('cart-modal');
+const closeCartModalButtons = cartModal ? cartModal.querySelectorAll('.close-button') : [];
+const cartItemsContainer = document.getElementById('cart-items');
+const cartTotalSpan = document.getElementById('cart-total');
+const checkoutBtn = document.getElementById('checkout-btn');
+
 const orderHistorySection = document.getElementById('order-history-section');
-const orderHistoryList = document.getElementById('order-history-list');
 const toggleOrderHistoryBtn = document.getElementById('toggle-order-history-btn');
+const orderHistoryList = document.getElementById('order-history-list');
+
 const ratingModal = document.getElementById('rating-modal');
-const closeRatingModalBtn = document.querySelector('.close-rating-modal-button');
-const ratingProductTitle = document.getElementById('rating-product-title');
+const closeRatingModalBtn = document.getElementById('close-rating-modal');
 const ratingStarsContainer = document.getElementById('rating-stars-container');
-const submitRatingButton = document.getElementById('submit-rating-button');
+const submitRatingButton = document.getElementById('submit-rating-btn');
+const modalAvgRating = document.getElementById('modal-avg-rating');
+const modalRatingStarsDisplay = document.getElementById('modal-rating-stars-display');
+const modalRatingCount = document.getElementById('modal-rating-count');
 
-// Custom Alert/Confirm Elements
-const customAlertModal = document.getElementById('custom-alert-modal');
-const customModalTitle = document.getElementById('custom-modal-title');
-const customModalMessage = document.getElementById('custom-modal-message');
-const customModalOkBtn = document.getElementById('custom-modal-ok-btn');
-const customModalCancelBtn = document.getElementById('custom-modal-cancel-btn');
+const searchInput = document.getElementById('search-input');
+const searchButton = document.getElementById('search-button');
+const categoryFiltersContainer = document.getElementById('category-filters');
+const sortSelect = document.getElementById('sort-select');
 
-let allProducts = {};
-let currentProductToRate = null; // Stores the product to be rated after an order
-let selectedRating = 0;
-let cart = {}; // Simple in-memory cart
-
-// --- Custom Alert/Confirm Functions ---
-function showAlert(message, title = 'Notification') {
-    return new Promise(resolve => {
-        customModalTitle.textContent = title;
-        customModalMessage.textContent = message;
-        customModalOkBtn.textContent = 'OK';
-        customModalOkBtn.classList.remove('danger', 'secondary');
-        customModalOkBtn.classList.add('primary');
-        customModalCancelBtn.style.display = 'none';
-        customAlertModal.style.display = 'flex';
-
-        const okHandler = () => {
-            customAlertModal.style.display = 'none';
-            customModalOkBtn.removeEventListener('click', okHandler);
-            resolve(true);
-        };
-        customModalOkBtn.addEventListener('click', okHandler);
-    });
-}
-
-function showConfirm(message, title = 'Confirm Action', okButtonText = 'Yes', cancelButtonText = 'No', okButtonClass = 'primary') {
-    return new Promise(resolve => {
-        customModalTitle.textContent = title;
-        customModalMessage.textContent = message;
-        customModalOkBtn.textContent = okButtonText;
-        customModalOkBtn.classList.remove('primary', 'secondary', 'danger');
-        customModalOkBtn.classList.add(okButtonClass);
-        customModalCancelBtn.textContent = cancelButtonText;
-        customModalCancelBtn.style.display = 'inline-block';
-        customAlertModal.style.display = 'flex';
-
-        const okHandler = () => {
-            customAlertModal.style.display = 'none';
-            customModalOkBtn.removeEventListener('click', okHandler);
-            customModalCancelBtn.removeEventListener('click', cancelHandler);
-            resolve(true);
-        };
-        const cancelHandler = () => {
-            customAlertModal.style.display = 'none';
-            customModalOkBtn.removeEventListener('click', okHandler);
-            customModalCancelBtn.removeEventListener('click', cancelHandler);
-            resolve(false);
-        };
-        customModalOkBtn.addEventListener('click', okHandler);
-        customModalCancelBtn.addEventListener('click', cancelHandler);
-    });
-}
+// New Order Form Elements
+const orderFormModal = document.getElementById('order-form-modal');
+const closeOrderFormModalBtn = document.getElementById('close-order-form-modal');
+const orderDetailsForm = document.getElementById('order-details-form');
+const orderAddressInput = document.getElementById('order-address');
+const orderPhoneInput = document.getElementById('order-phone');
+const finishOrderBtn = document.getElementById('finish-order-btn');
 
 
-// --- Firebase Authentication State Change ---
-onAuthStateChanged(auth, (user) => {
-    // This part is mostly for debugging or if you integrate admin login here
-    if (user) {
-        console.log("User is signed in:", user.email);
-        // Elements like 'auth-section' and 'admin-dashboard' are not in index.html
-        // so we add null checks to prevent errors.
-        const authSection = document.getElementById('auth-section');
-        const adminDashboard = document.getElementById('admin-dashboard');
-        if (authSection) {
-            authSection.style.display = 'none';
-        }
-        if (adminDashboard) {
-            adminDashboard.style.display = 'block';
-        }
-    } else {
-        console.log("User is signed out.");
-        const authSection = document.getElementById('auth-section');
-        const adminDashboard = document.getElementById('admin-dashboard');
-        if (authSection) {
-            authSection.style.display = 'block';
-        }
-        if (adminDashboard) {
-            adminDashboard.style.display = 'none';
-        }
-    }
-    loadProducts(); // Load products regardless of auth state for public view
-});
+// --- Global Variables ---
+let currentAuthMode = 'login'; // 'login' or 'signup'
+let products = []; // To store fetched products
+let cart = []; // To store cart items
+let currentProduct = null; // To store the product currently viewed in modal
+let selectedRating = 0; // To store the rating selected by the user
+let currentUser = null; // To store the current authenticated user
 
-// --- Product Listing Functions ---
-function displayProducts(products) {
-    productListingsContainer.innerHTML = '';
-    if (Object.keys(products).length === 0) {
-        productListingsContainer.innerHTML = '<p class="no-products">No products found.</p>';
+// --- Utility Functions ---
+function showCustomAlert(title, message, isConfirm = false, onOk = null, onCancel = null) {
+    const customModal = document.getElementById('custom-alert-modal');
+    const customModalTitle = document.getElementById('custom-modal-title');
+    const customModalMessage = document.getElementById('custom-modal-message');
+    const customModalOkBtn = document.getElementById('custom-modal-ok-btn');
+    const customModalCancelBtn = document.getElementById('custom-modal-cancel-btn');
+
+    if (!customModal || !customModalTitle || !customModalMessage || !customModalOkBtn || !customModalCancelBtn) {
+        console.error("Custom alert modal elements not found.");
+        alert(`${title}: ${message}`); // Fallback to browser alert
         return;
     }
 
-    Object.values(products).forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.dataset.productId = product.id;
+    customModalTitle.textContent = title;
+    customModalMessage.textContent = message;
 
-        // Determine image URL with robust fallback
-        const imageUrl = product.imageUrls && Array.isArray(product.imageUrls) && product.imageUrls.length > 0
-                         ? product.imageUrls[0]
-                         : 'https://placehold.co/400x300/E9ECEF/495057?text=No+Image'; // Default placeholder image
-        
-        const videoHtml = product.videoUrl ? `<div class="product-video-thumbnail"><i class="fas fa-video"></i></div>` : '';
+    customModalOkBtn.onclick = () => {
+        customModal.style.display = 'none';
+        if (onOk) onOk();
+    };
+
+    if (isConfirm) {
+        customModalCancelBtn.style.display = 'inline-block';
+        customModalCancelBtn.onclick = () => {
+            customModal.style.display = 'none';
+            if (onCancel) onCancel();
+        };
+    } else {
+        customModalCancelBtn.style.display = 'none';
+    }
+
+    customModal.style.display = 'flex'; // Use flex to center
+}
+
+// --- Authentication ---
+onAuthStateChanged(auth, (user) => {
+    currentUser = user;
+    if (user) {
+        loginSignupBtn.style.display = 'none';
+        userProfileSection.style.display = 'flex';
+        welcomeMessage.textContent = `Welcome, ${user.email}!`;
+        // Load cart and order history for the logged-in user
+        loadCart();
+        loadOrderHistory(); // Load initially if user is logged in
+    } else {
+        loginSignupBtn.style.display = 'block';
+        userProfileSection.style.display = 'none';
+        welcomeMessage.textContent = '';
+        cart = []; // Clear cart on logout
+        updateCartCount();
+        cartItemsContainer.innerHTML = ''; // Clear cart display
+        cartTotalSpan.textContent = '0.00';
+        orderHistoryList.innerHTML = ''; // Clear order history display
+        orderHistorySection.style.display = 'none'; // Hide order history
+        toggleOrderHistoryBtn.textContent = 'Show Order History';
+    }
+});
+
+authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = authEmailInput.value;
+    const password = authPasswordInput.value;
+
+    try {
+        if (currentAuthMode === 'login') {
+            await signInWithEmailAndPassword(auth, email, password);
+            showCustomAlert('Success', 'Logged in successfully!');
+        } else {
+            await createUserWithEmailAndPassword(auth, email, password);
+            showCustomAlert('Success', 'Account created and logged in successfully!');
+        }
+        authModal.style.display = 'none'; // Close modal on success
+        authForm.reset(); // Clear form
+    } catch (error) {
+        showCustomAlert('Error', error.message);
+    }
+});
+
+loginSignupBtn.addEventListener('click', () => {
+    authModal.style.display = 'block';
+    authModalTitle.textContent = 'Login';
+    authSubmitBtn.textContent = 'Login';
+    toggleAuthMode.innerHTML = `Don't have an account? <span class="link" data-mode="signup">Sign Up</span>`;
+    currentAuthMode = 'login';
+});
+
+toggleAuthMode.addEventListener('click', (e) => {
+    if (e.target.tagName === 'SPAN') {
+        const mode = e.target.dataset.mode;
+        if (mode === 'signup') {
+            authModalTitle.textContent = 'Sign Up';
+            authSubmitBtn.textContent = 'Sign Up';
+            toggleAuthMode.innerHTML = `Already have an account? <span class="link" data-mode="login">Login</span>`;
+            currentAuthMode = 'signup';
+        } else {
+            authModalTitle.textContent = 'Login';
+            authSubmitBtn.textContent = 'Login';
+            toggleAuthMode.innerHTML = `Don't have an account? <span class="link" data-mode="signup">Sign Up</span>`;
+            currentAuthMode = 'login';
+        }
+    }
+});
+
+logoutBtn.addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        showCustomAlert('Success', 'Logged out successfully!');
+    } catch (error) {
+        showCustomAlert('Error', error.message);
+    }
+});
+
+// --- Product Listing ---
+function fetchProducts() {
+    const productsRef = ref(database, 'products');
+    onValue(productsRef, (snapshot) => {
+        const data = snapshot.val();
+        products = [];
+        if (data) {
+            for (let id in data) {
+                products.push({ id, ...data[id] });
+            }
+        }
+        displayProducts(products); // Initial display
+        populateCategoryFilters(); // Populate categories based on fetched products
+    }, (error) => {
+        showCustomAlert('Error', 'Failed to fetch products: ' + error.message);
+    });
+}
+
+function populateCategoryFilters() {
+    if (!categoryFiltersContainer) {
+        console.error("Category filters container not found.");
+        return;
+    }
+    categoryFiltersContainer.innerHTML = ''; // Clear existing buttons
+    const allButton = document.createElement('button');
+    allButton.classList.add('category-button', 'active');
+    allButton.dataset.category = 'all';
+    allButton.textContent = 'All';
+    categoryFiltersContainer.appendChild(allButton);
+
+    const categories = new Set(products.map(p => p.category).filter(Boolean)); // Get unique categories
+    categories.forEach(category => {
+        const button = document.createElement('button');
+        button.classList.add('category-button');
+        button.dataset.category = category;
+        button.textContent = category;
+        categoryFiltersContainer.appendChild(button);
+    });
+}
+
+function displayProducts(productsToDisplay) {
+    if (!productGrid) {
+        console.error("Product grid container not found.");
+        return;
+    }
+    productGrid.innerHTML = ''; // Clear existing products
+    if (productsToDisplay.length === 0) {
+        productGrid.innerHTML = '<p>No products found.</p>';
+        return;
+    }
+
+    productsToDisplay.forEach(product => {
+        const productCard = document.createElement('div');
+        productCard.classList.add('product-card');
+        productCard.dataset.id = product.id; // Store product ID
+
+        const ratingHTML = getStarRatingHTML(product.averageRating);
 
         productCard.innerHTML = `
-            <div class="product-image-container">
-                <img src="${imageUrl}" alt="${product.title}" class="product-image" onerror="this.onerror=null;this.src='https://placehold.co/400x300/E9ECEF/495057?text=Image+Error';">
-                ${videoHtml}
+            <img src="${product.imageUrl || 'https://via.placeholder.com/150'}" alt="${product.title}">
+            <h3>${product.title}</h3>
+            <p>${product.description.substring(0, 70)}...</p>
+            <div class="product-card-rating">
+                ${ratingHTML} (${product.ratingCount || 0})
             </div>
-            <h3 class="product-title">${product.title}</h3>
-            <p class="product-brand">${product.brand}</p>
-            <p class="product-price">PKR ${product.price.toLocaleString()}</p>
-            <button class="view-details-button admin-button primary" data-product-id="${product.id}"><i class="fas fa-info-circle"></i> View Details</button>
-            <button class="add-to-cart-card-button admin-button success" data-product-id="${product.id}"><i class="fas fa-shopping-cart"></i> Add to Cart</button>
+            <p class="price">$${product.price ? product.price.toFixed(2) : 'N/A'}</p>
+            <button class="button secondary view-detail-btn">View Detail</button>
+            <button class="button primary add-to-cart-btn" data-product-id="${product.id}">Add to Cart</button>
         `;
-        productListingsContainer.appendChild(productCard);
-    });
-
-    document.querySelectorAll('.view-details-button').forEach(button => {
-        button.removeEventListener('click', openProductModal); // Avoid multiple listeners
-        button.addEventListener('click', openProductModal);
-    });
-    document.querySelectorAll('.add-to-cart-card-button').forEach(button => {
-        button.removeEventListener('click', addProductToCartFromCard); // Avoid multiple listeners
-        button.addEventListener('click', addProductToCartFromCard);
+        productGrid.appendChild(productCard);
     });
 }
 
-function loadProducts() {
-    const productsRef = ref(database, 'products/');
-    onValue(productsRef, (snapshot) => {
-        allProducts = {};
-        snapshot.forEach((childSnapshot) => {
-            const product = childSnapshot.val();
-            product.id = product.id || childSnapshot.key; // Ensure product has an ID
-            allProducts[product.id] = product;
-        });
-        filterAndSortProducts(); // Re-filter and display all products
-    }, (error) => {
-        console.error("Error loading products:", error);
-        showAlert("Failed to load products. Please try again later.", "Error");
+function getStarRatingHTML(averageRating) {
+    let ratingHTML = '';
+    const fullStars = Math.floor(averageRating);
+    const halfStar = averageRating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+    for (let i = 0; i < fullStars; i++) {
+        ratingHTML += '<i class="fas fa-star"></i>';
+    }
+    if (halfStar) {
+        ratingHTML += '<i class="fas fa-star-half-alt"></i>';
+    }
+    for (let i = 0; i < emptyStars; i++) {
+        ratingHTML += '<i class="far fa-star"></i>';
+    }
+    return ratingHTML;
+}
+
+
+// --- Search and Filter ---
+searchInput.addEventListener('input', applyFiltersAndSort);
+searchButton.addEventListener('click', applyFiltersAndSort);
+
+if (categoryFiltersContainer) {
+    categoryFiltersContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('category-button')) {
+            // Remove 'active' from all buttons
+            categoryFiltersContainer.querySelectorAll('.category-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            // Add 'active' to the clicked button
+            e.target.classList.add('active');
+            applyFiltersAndSort();
+        }
     });
 }
 
-function filterAndSortProducts() {
-    let filteredProducts = Object.values(allProducts);
+if (sortSelect) {
+    sortSelect.addEventListener('change', applyFiltersAndSort);
+}
 
-    // Apply search filter
+function applyFiltersAndSort() {
+    let filteredProducts = [...products];
+
+    // Search Filter
     const searchTerm = searchInput.value.toLowerCase();
     if (searchTerm) {
         filteredProducts = filteredProducts.filter(product =>
-            (product.title && product.title.toLowerCase().includes(searchTerm)) ||
-            (product.description && product.description.toLowerCase().includes(searchTerm)) ||
-            (product.brand && product.brand.toLowerCase().includes(searchTerm)) ||
+            product.title.toLowerCase().includes(searchTerm) ||
+            product.description.toLowerCase().includes(searchTerm) ||
             (product.category && product.category.toLowerCase().includes(searchTerm))
         );
     }
 
-    // Apply category filter
-    // Only consider desktop category buttons as sidebar is removed
-    let activeCategory = 'all';
-    const desktopActiveButton = document.querySelector('.filter-sort-section .category-button.active');
-    
-    if (desktopActiveButton) {
-        activeCategory = desktopActiveButton.dataset.category;
+    // Category Filter
+    const activeCategoryButton = document.querySelector('.category-button.active');
+    const selectedCategory = activeCategoryButton ? activeCategoryButton.dataset.category : 'all';
+
+    if (selectedCategory !== 'all') {
+        filteredProducts = filteredProducts.filter(product => product.category === selectedCategory);
     }
 
-    if (activeCategory !== 'all') {
-        filteredProducts = filteredProducts.filter(product => product.category === activeCategory);
-    }
-
-    // Apply sort order
-    const sortBy = sortBySelect.value;
-    if (sortBy === 'price-asc') {
-        filteredProducts.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price-desc') {
-        filteredProducts.sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'alpha-asc') {
-        filteredProducts.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    } else if (sortBy === 'alpha-desc') {
-        filteredProducts.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
-    } else if (sortBy === 'featured') {
-        filteredProducts.sort((a, b) => (b.featured || false) - (a.featured || false));
+    // Sorting
+    const sortBy = sortSelect.value;
+    switch (sortBy) {
+        case 'price-asc':
+            filteredProducts.sort((a, b) => (a.price || 0) - (b.price || 0));
+            break;
+        case 'price-desc':
+            filteredProducts.sort((a, b) => (b.price || 0) - (a.price || 0));
+            break;
+        case 'name-asc':
+            filteredProducts.sort((a, b) => a.title.localeCompare(b.title));
+            break;
+        case 'name-desc':
+            filteredProducts.sort((a, b) => b.title.localeCompare(a.title));
+            break;
+        case 'rating-desc':
+            filteredProducts.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+            break;
+        default:
+            // No sorting or default order
+            break;
     }
 
     displayProducts(filteredProducts);
 }
 
-// --- Product Modal Functions ---
-function openProductModal(event) {
-    const productId = event.currentTarget.dataset.productId;
-    const product = allProducts[productId];
 
-    if (!product) {
-        showAlert("Product details not found.", "Error");
+// --- Product Details Modal ---
+if (productGrid) {
+    productGrid.addEventListener('click', (e) => {
+        if (e.target.classList.contains('view-detail-btn')) {
+            const productId = e.target.closest('.product-card').dataset.id;
+            const product = products.find(p => p.id === productId);
+            if (product) {
+                currentProduct = product; // Set current product for modal actions
+                showProductDetails(product);
+            }
+        } else if (e.target.classList.contains('add-to-cart-btn')) {
+            const productId = e.target.dataset.productId;
+            const productToAdd = products.find(p => p.id === productId);
+            if (productToAdd) {
+                addToCart(productToAdd);
+            }
+        }
+    });
+}
+
+
+function showProductDetails(product) {
+    if (!productModal) {
+        console.error("Product modal not found.");
         return;
     }
-
-    // Determine image URL with robust fallback for modal
-    modalProductImage.src = product.imageUrls && Array.isArray(product.imageUrls) && product.imageUrls.length > 0
-                            ? product.imageUrls[0]
-                            : 'https://placehold.co/400x300/E9ECEF/495057?text=No+Image';
+    modalProductImage.src = product.imageUrl || 'https://via.placeholder.com/300';
     modalProductTitle.textContent = product.title;
-    modalProductPrice.textContent = `PKR ${product.price.toLocaleString()}`;
     modalProductDescription.textContent = product.description;
-    modalProductBrand.textContent = `Brand: ${product.brand}`;
-    modalProductCategory.textContent = `Category: ${product.category}`;
-    modalProductStock.textContent = `Stock: ${product.stock > 0 ? product.stock : 'Out of Stock'}`;
+    modalProductPrice.textContent = product.price ? product.price.toFixed(2) : 'N/A';
 
+    // Video display
     if (product.videoUrl) {
-        modalProductVideo.innerHTML = `<p>Product Video:</p><iframe src="${product.videoUrl}" frameborder="0" allowfullscreen></iframe>`;
         modalProductVideo.style.display = 'block';
+        modalProductVideo.querySelector('iframe').src = product.videoUrl.replace("watch?v=", "embed/");
+        modalProductVideo.querySelector('iframe').setAttribute('allowfullscreen', '');
     } else {
-        modalProductVideo.innerHTML = '';
         modalProductVideo.style.display = 'none';
+        modalProductVideo.querySelector('iframe').src = ''; // Clear existing video
     }
 
-    productQuantityInput.value = 1; // Reset quantity
-    addToCartButton.dataset.productId = productId;
-    placeOrderButton.dataset.productId = productId;
+    // Display product ratings
+    updateProductRatingDisplay(product.id, product.averageRating, product.ratingCount);
 
-    productModal.style.display = 'flex'; // Show modal
+    productModal.style.display = 'block';
 }
 
-function closeProductModal() {
-    productModal.style.display = 'none'; // Hide modal
-    modalProductVideo.innerHTML = ''; // Clear video iframe
+if (addProductToCartBtn) {
+    addProductToCartBtn.addEventListener('click', () => {
+        if (currentProduct) {
+            addToCart(currentProduct);
+            productModal.style.display = 'none'; // Close modal after adding to cart
+        }
+    });
 }
 
-// --- Cart and Order Functions ---
-function addProductToCartFromCard(event) {
-    const productId = event.currentTarget.dataset.productId;
-    const product = allProducts[productId];
-
-    if (!product) {
-        showAlert("Product not found.", "Error");
-        return;
-    }
-
-    if (product.stock <= 0) {
-        showAlert("This product is currently out of stock.", "Out of Stock");
-        return;
-    }
-
-    const quantity = 1; // Always add 1 from card button
-    if (cart[productId]) {
-        cart[productId].quantity += quantity;
-    } else {
-        cart[productId] = { ...product, quantity };
-    }
-    showAlert(`${quantity} x ${product.title} added to cart!`, "Added to Cart");
-    console.log("Current Cart:", cart);
+if (placeOrderModalBtn) {
+    placeOrderModalBtn.addEventListener('click', () => {
+        if (!currentUser) {
+            showCustomAlert('Authentication Required', 'Please log in to place an order.');
+            return;
+        }
+        if (currentProduct) {
+            productModal.style.display = 'none'; // Close product detail modal
+            openOrderFormModal(); // Open the new order form modal
+        }
+    });
 }
 
+// --- Order Form Modal Functions ---
+function openOrderFormModal() {
+    if (orderFormModal) {
+        orderFormModal.style.display = 'block';
+        orderDetailsForm.reset(); // Clear any previous input
+    }
+}
 
-async function addProductToCartFromModal() {
-    const productId = addToCartButton.dataset.productId;
-    const product = allProducts[productId];
-    const quantity = parseInt(productQuantityInput.value);
+if (closeOrderFormModalBtn) {
+    closeOrderFormModalBtn.addEventListener('click', () => {
+        if (orderFormModal) {
+            orderFormModal.style.display = 'none';
+        }
+    });
+}
 
-    if (!product) {
-        showAlert("Product not found.", "Error");
-        return;
-    }
-    if (isNaN(quantity) || quantity <= 0) {
-        showAlert("Please enter a valid quantity.", "Invalid Quantity");
-        return;
-    }
-    if (quantity > product.stock) {
-        showAlert(`Only ${product.stock} units of ${product.title} are available.`, "Out of Stock");
-        return;
-    }
-
-    if (cart[productId]) {
-        cart[productId].quantity += quantity;
-    } else {
-        cart[productId] = { ...product, quantity };
-    }
-    showAlert(`${quantity} x ${product.title} added to cart!`, "Added to Cart");
-    console.log("Current Cart:", cart);
-    closeProductModal();
+if (orderDetailsForm) {
+    orderDetailsForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        placeOrder();
+    });
 }
 
 async function placeOrder() {
-    const productId = placeOrderButton.dataset.productId;
-    const product = allProducts[productId];
-    const quantity = parseInt(productQuantityInput.value);
-
-    if (!product) {
-        showAlert("Product not found for order.", "Error");
-        return;
-    }
-    if (isNaN(quantity) || quantity <= 0) {
-        showAlert("Please enter a valid quantity for your order.", "Invalid Quantity");
-        return;
-    }
-    if (quantity > product.stock) {
-        showAlert(`Cannot order ${quantity} units. Only ${product.stock} units of ${product.title} are available.`, "Insufficient Stock");
+    if (!currentUser || !currentProduct) {
+        showCustomAlert('Error', 'Cannot place order. Please ensure you are logged in and have selected a product.');
         return;
     }
 
-    const confirmOrder = await showConfirm(`Do you want to place an order for ${quantity} x ${product.title} for PKR ${(product.price * quantity).toLocaleString()}?`, "Confirm Order");
-    if (!confirmOrder) {
+    const address = orderAddressInput.value.trim();
+    const phoneNumber = orderPhoneInput.value.trim();
+
+    if (!address || !phoneNumber) {
+        showCustomAlert('Missing Information', 'Please provide your delivery address and phone number.');
         return;
     }
 
     try {
-        // Create an order object
+        const ordersRef = ref(database, 'orders');
+        const newOrderRef = push(ordersRef); // Generates a unique key for the new order
         const orderData = {
-            productId: product.id,
-            productTitle: product.title,
-            quantity: quantity,
-            totalPrice: product.price * quantity,
-            orderDate: serverTimestamp(),
-            status: 'pending', // e.g., 'pending', 'completed', 'cancelled'
-            userId: auth.currentUser ? auth.currentUser.uid : 'guest', // Track user if logged in
-            userEmail: auth.currentUser ? auth.currentUser.email : 'guest',
+            productId: currentProduct.id,
+            productTitle: currentProduct.title,
+            productPrice: currentProduct.price,
+            productImageUrl: currentProduct.imageUrl || '',
+            userId: currentUser.uid,
+            userEmail: currentUser.email,
+            deliveryAddress: address,
+            phoneNumber: phoneNumber,
+            orderTime: serverTimestamp() // Firebase server timestamp
         };
-
-        // Push to 'orders' node
-        const newOrderRef = push(ref(database, 'orders/'));
         await set(newOrderRef, orderData);
-
-        // Deduct stock
-        const newStock = product.stock - quantity;
-        const productRef = ref(database, `products/${product.id}`);
-        await update(productRef, { stock: newStock });
-
-        showAlert(`Order for ${quantity} x ${product.title} placed successfully!`, "Order Confirmed");
-        
-        // --- Compulsory Rating after Order ---
-        closeProductModal(); // Close product modal first
-        // Set the product for rating and open the rating modal
-        currentProductToRate = {
-            id: product.id,
-            title: product.title
-        };
-        // Pass the event object to openRatingModal, even if it's a synthetic one
-        openRatingModal({ currentTarget: { dataset: { productId: product.id, productTitle: product.title } } });
-
-        loadProducts(); // Refresh product list to show updated stock
+        showCustomAlert('Order Placed!', 'Your order has been placed successfully. We will contact you soon!', false, () => {
+            if (orderFormModal) orderFormModal.style.display = 'none'; // Close the order form modal
+            if (productModal) productModal.style.display = 'none'; // Also close product detail modal if it's still open
+        });
+        // Optionally add the order to the local order history array and re-display
+        loadOrderHistory(); // Refresh order history
     } catch (error) {
-        console.error("Error placing order:", error);
-        showAlert("Failed to place order. Please try again.", "Order Error");
+        showCustomAlert('Order Error', 'Failed to place order: ' + error.message);
     }
 }
 
-// --- Order History Functions ---
-function displayOrderHistory(orders) {
-    orderHistoryList.innerHTML = '';
-    if (Object.keys(orders).length === 0) {
-        orderHistoryList.innerHTML = '<p>No past orders found.</p>';
+
+// --- Cart Functionality ---
+function addToCart(product) {
+    if (!currentUser) {
+        showCustomAlert('Authentication Required', 'Please log in to add items to your cart.');
         return;
     }
 
-    Object.values(orders).sort((a, b) => b.orderDate - a.orderDate).forEach(order => {
-        const orderItem = document.createElement('div');
-        orderItem.className = 'order-item';
-        const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A';
-        orderItem.innerHTML = `
-            <p><strong>Order ID:</strong> ${order.orderId || 'N/A'}</p>
-            <p><strong>Product:</strong> ${order.productTitle}</p>
-            <p><strong>Quantity:</strong> ${order.quantity}</p>
-            <p><strong>Total Price:</strong> PKR ${order.totalPrice.toLocaleString()}</p>
-            <p><strong>Date:</strong> ${orderDate}</p>
-            <p><strong>Status:</strong> <span class="order-status ${order.status}">${order.status}</span></p>
-            <button class="rate-product-button admin-button info" data-product-id="${order.productId}" data-product-title="${order.productTitle}">Rate Product</button>
-        `;
-        orderHistoryList.appendChild(orderItem);
-    });
-
-    document.querySelectorAll('.rate-product-button').forEach(button => {
-        button.removeEventListener('click', openRatingModal);
-        button.addEventListener('click', openRatingModal);
-    });
+    const cartItem = cart.find(item => item.productId === product.id);
+    if (cartItem) {
+        cartItem.quantity++;
+    } else {
+        cart.push({
+            productId: product.id,
+            title: product.title,
+            price: product.price,
+            imageUrl: product.imageUrl,
+            quantity: 1
+        });
+    }
+    saveCart();
+    showCustomAlert('Added to Cart', `${product.title} has been added to your cart.`);
 }
 
-function loadOrderHistory() {
-    // This function will only fetch orders if a user is logged in.
-    if (auth.currentUser) {
-        const ordersRef = ref(database, 'orders/');
-        onValue(ordersRef, (snapshot) => {
-            const userOrders = {};
-            snapshot.forEach((childSnapshot) => {
-                const order = childSnapshot.val();
-                order.orderId = childSnapshot.key; // Store the order ID
-                if (order.userId === auth.currentUser.uid) {
-                    userOrders[childSnapshot.key] = order;
-                }
-            });
-            displayOrderHistory(userOrders);
-        }, (error) => {
-            console.error("Error loading order history:", error);
-            showAlert("Failed to load order history.", "Error");
+function saveCart() {
+    if (currentUser) {
+        set(ref(database, `users/${currentUser.uid}/cart`), cart);
+    }
+    updateCartCount();
+    renderCartItems(); // Re-render cart display immediately
+}
+
+function loadCart() {
+    if (currentUser) {
+        onValue(ref(database, `users/${currentUser.uid}/cart`), (snapshot) => {
+            const data = snapshot.val();
+            cart = data ? Object.values(data) : [];
+            updateCartCount();
+            renderCartItems();
+        }, {
+            onlyOnce: false // Listen for real-time updates
         });
-    } else {
-        orderHistoryList.innerHTML = '<p>Please log in to view your order history.</p>';
     }
 }
 
-// --- Rating Functions ---
-function openRatingModal(event) {
-    // Use currentProductToRate if set by placeOrder, otherwise use event target
-    const productId = currentProductToRate ? currentProductToRate.id : event.currentTarget.dataset.productId;
-    const productTitle = currentProductToRate ? currentProductToRate.title : event.currentTarget.dataset.productTitle;
+function updateCartCount() {
+    const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+    if (cartCountSpan) {
+        cartCountSpan.textContent = totalCount;
+    }
+}
 
-    currentProductToRate = {
-        id: productId,
-        title: productTitle
-    };
-    ratingProductTitle.textContent = currentProductToRate.title;
-    selectedRating = 0; // Reset selected rating
-    updateRatingStars();
-    ratingModal.style.display = 'flex'; // Show modal
+if (cartIcon) {
+    cartIcon.addEventListener('click', () => {
+        if (!currentUser) {
+            showCustomAlert('Authentication Required', 'Please log in to view your cart.');
+            return;
+        }
+        if (cartModal) {
+            cartModal.style.display = 'block';
+            renderCartItems();
+        }
+    });
+}
+
+function renderCartItems() {
+    if (!cartItemsContainer || !cartTotalSpan) return;
+
+    cartItemsContainer.innerHTML = '';
+    let total = 0;
+
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p>Your cart is empty.</p>';
+    } else {
+        cart.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.classList.add('cart-item');
+            itemElement.innerHTML = `
+                <img src="${item.imageUrl || 'https://via.placeholder.com/50'}" alt="${item.title}">
+                <span>${item.title}</span>
+                <span>$${item.price.toFixed(2)} x ${item.quantity}</span>
+                <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                <button class="remove-from-cart-btn" data-product-id="${item.productId}"><i class="fas fa-times"></i></button>
+            `;
+            cartItemsContainer.appendChild(itemElement);
+            total += item.price * item.quantity;
+        });
+    }
+    cartTotalSpan.textContent = total.toFixed(2);
+
+    // Add event listeners for remove buttons
+    cartItemsContainer.querySelectorAll('.remove-from-cart-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const productId = e.currentTarget.dataset.productId;
+            removeFromCart(productId);
+        });
+    });
+}
+
+function removeFromCart(productId) {
+    cart = cart.filter(item => item.productId !== productId);
+    saveCart();
+    showCustomAlert('Removed from Cart', 'Item removed from your cart.');
+}
+
+if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', () => {
+        if (cart.length === 0) {
+            showCustomAlert('Cart Empty', 'Your cart is empty. Add some products before checking out.');
+            return;
+        }
+        showCustomAlert('Checkout', 'Proceeding to checkout (this is a placeholder for actual checkout logic).', false, () => {
+            // Placeholder for actual checkout logic
+            // For now, let's clear the cart after "checkout"
+            cart = [];
+            saveCart();
+            if (cartModal) {
+                cartModal.style.display = 'none';
+            }
+        });
+    });
+}
+
+// --- Order History ---
+function loadOrderHistory() {
+    if (!currentUser) {
+        orderHistoryList.innerHTML = '<p>Please log in to view your order history.</p>';
+        return;
+    }
+
+    const userOrdersRef = ref(database, 'orders'); // Listen to all orders for admin functionality. For user-specific history, filter by userId.
+
+    onValue(userOrdersRef, (snapshot) => {
+        orderHistoryList.innerHTML = ''; // Clear existing history
+        const ordersData = snapshot.val();
+        let userOrders = [];
+
+        if (ordersData) {
+            for (const orderId in ordersData) {
+                const order = ordersData[orderId];
+                if (order.userId === currentUser.uid) { // Filter orders for the current user
+                    userOrders.push({ id: orderId, ...order });
+                }
+            }
+        }
+
+        if (userOrders.length === 0) {
+            orderHistoryList.innerHTML = '<p>You have no past orders.</p>';
+            return;
+        }
+
+        // Sort orders by time, newest first
+        userOrders.sort((a, b) => (b.orderTime || 0) - (a.orderTime || 0));
+
+        userOrders.forEach(order => {
+            const orderDate = order.orderTime ? new Date(order.orderTime).toLocaleString() : 'N/A';
+            const orderElement = document.createElement('div');
+            orderElement.classList.add('order-history-item');
+            orderElement.innerHTML = `
+                <img src="${order.productImageUrl || 'https://via.placeholder.com/50'}" alt="${order.productTitle}">
+                <div>
+                    <h4>${order.productTitle}</h4>
+                    <p>Price: $${order.productPrice ? order.productPrice.toFixed(2) : 'N/A'}</p>
+                    <p>Ordered On: ${orderDate}</p>
+                    <p>Address: ${order.deliveryAddress}</p>
+                    <p>Phone: ${order.phoneNumber}</p>
+                </div>
+            `;
+            orderHistoryList.appendChild(orderElement);
+        });
+    }, (error) => {
+        showCustomAlert('Error', 'Failed to load order history: ' + error.message);
+    });
+}
+
+// --- Product Rating ---
+if (rateProductBtn) {
+    rateProductBtn.addEventListener('click', () => {
+        if (!currentUser) {
+            showCustomAlert('Authentication Required', 'Please log in to rate a product.');
+            return;
+        }
+        if (currentProduct) {
+            openRatingModal();
+        }
+    });
+}
+
+function openRatingModal() {
+    if (ratingModal) {
+        selectedRating = 0; // Reset rating
+        updateRatingStars(); // Clear star display
+        ratingModal.style.display = 'block';
+    }
 }
 
 function closeRatingModal() {
-    ratingModal.style.display = 'none'; // Hide modal
-    currentProductToRate = null; // Clear product for rating
-    selectedRating = 0; // Reset selected rating
+    if (ratingModal) {
+        ratingModal.style.display = 'none';
+    }
 }
 
 function updateRatingStars() {
-    const stars = ratingStarsContainer.querySelectorAll('.fa-star');
-    stars.forEach(star => {
-        const rating = parseInt(star.dataset.rating);
-        if (rating <= selectedRating) {
-            star.classList.add('selected');
+    if (!ratingStarsContainer) return;
+    ratingStarsContainer.querySelectorAll('.fa-star, .fa-star-half-alt').forEach((star, index) => {
+        if (index < selectedRating) {
+            star.classList.remove('far');
+            star.classList.add('fas');
         } else {
-            star.classList.remove('selected');
+            star.classList.remove('fas');
+            star.classList.add('far');
         }
     });
 }
 
 async function submitProductRating() {
-    if (!currentProductToRate || selectedRating === 0) {
-        showAlert("Please select a rating before submitting.", "Rating Error");
+    if (!currentUser || !currentProduct || selectedRating === 0) {
+        showCustomAlert('Error', 'Please log in, select a product, and choose a rating before submitting.');
         return;
     }
 
-    // For a public app, you might allow guest ratings or require login.
-    // For now, we'll use a guest ID if not logged in.
-    const userId = auth.currentUser ? auth.currentUser.uid : `guest_${Date.now()}`;
-
-    const ratingData = {
-        productId: currentProductToRate.id,
-        userId: userId,
-        rating: selectedRating,
-        timestamp: serverTimestamp()
-    };
-
+    const ratingRef = ref(database, `productRatings/${currentProduct.id}/${currentUser.uid}`);
     try {
-        // Store ratings under productRatings/{productId}/{userId}
-        const ratingsRef = ref(database, `productRatings/${currentProductToRate.id}/${userId}`);
-        await set(ratingsRef, ratingData);
-        showAlert(`Thank you for rating ${currentProductToRate.title} with ${selectedRating} stars!`, "Rating Submitted");
-        closeRatingModal();
+        await set(ratingRef, selectedRating);
+        showCustomAlert('Rating Submitted', 'Thank you for your rating!', false, () => {
+            closeRatingModal();
+            // Re-fetch and update product details to reflect new average rating
+            fetchProductRatings(currentProduct.id);
+        });
     } catch (error) {
-        console.error("Error submitting rating:", error);
-        showAlert("Failed to submit rating. Please try again.", "Rating Error");
+        showCustomAlert('Rating Error', 'Failed to submit rating: ' + error.message);
     }
 }
 
-// --- Event Listeners ---
-document.addEventListener('DOMContentLoaded', () => {
-    // Initial load of products
-    loadProducts();
-
-    // Event listener for search button
-    if (searchButton) {
-        searchButton.addEventListener('click', filterAndSortProducts);
-    }
-
-    // Event listener for search input (live search on enter)
-    if (searchInput) {
-        searchInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                filterAndSortProducts();
-            }
+function fetchProductRatings(productId) {
+    const ratingsRef = ref(database, `productRatings/${productId}`);
+    onValue(ratingsRef, (snapshot) => {
+        let totalRating = 0;
+        let ratingCount = 0;
+        snapshot.forEach((childSnapshot) => {
+            totalRating += childSnapshot.val();
+            ratingCount++;
         });
-    }
 
-    // Event listeners for desktop category filter buttons
-    categoryFilterButtons.forEach(button => {
+        const averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
+
+        // Update the product object in the 'products' array
+        const productIndex = products.findIndex(p => p.id === productId);
+        if (productIndex !== -1) {
+            products[productIndex].averageRating = averageRating;
+            products[productIndex].ratingCount = ratingCount;
+        }
+
+        // Update product modal display if it's open for this product
+        if (currentProduct && currentProduct.id === productId) {
+            updateProductRatingDisplay(productId, averageRating, ratingCount);
+        }
+        // Also update product grid display
+        displayProducts(products); // Re-render all products to show updated ratings
+    }, (error) => {
+        console.error("Error fetching product ratings: ", error);
+        // showCustomAlert('Error', 'Failed to fetch product ratings: ' + error.message);
+    });
+}
+
+function updateProductRatingDisplay(productId, averageRating, ratingCount) {
+    if (modalAvgRating) {
+        modalAvgRating.textContent = averageRating.toFixed(1);
+    }
+    if (modalRatingStarsDisplay) {
+        modalRatingStarsDisplay.innerHTML = getStarRatingHTML(averageRating);
+    }
+    if (modalRatingCount) {
+        modalRatingCount.textContent = ratingCount;
+    }
+}
+
+// --- Initial Data Load ---
+document.addEventListener('DOMContentLoaded', () => {
+    fetchProducts(); // Load products and initial display
+    // Initial check for auth state is handled by onAuthStateChanged
+    // No need to call loadCart or loadOrderHistory here, as onAuthStateChanged will trigger it
+});
+
+// --- Modal Closers ---
+if (authModal) {
+    closeAuthModalButtons.forEach(button => {
         button.addEventListener('click', () => {
-            categoryFilterButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            filterAndSortProducts();
+            authModal.style.display = 'none';
         });
     });
+    window.addEventListener('click', (event) => {
+        if (event.target === authModal) {
+            authModal.style.display = 'none';
+        }
+    });
+}
 
-    // Event listener for sort by select
-    if (sortBySelect) {
-        sortBySelect.addEventListener('change', filterAndSortProducts);
-    }
-
-    // Close product modal
-    if (closeModalButton) {
-        closeModalButton.addEventListener('click', closeProductModal);
-    }
+if (productModal) {
+    closeProductModalButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            productModal.style.display = 'none';
+        });
+    });
     window.addEventListener('click', (event) => {
         if (event.target === productModal) {
-            closeProductModal();
+            productModal.style.display = 'none';
         }
     });
+}
 
-    // Add to cart button in modal
-    if (addToCartButton) {
-        addToCartButton.addEventListener('click', addProductToCartFromModal);
-    }
-
-    // Place Order button in modal
-    if (placeOrderButton) {
-        placeOrderButton.addEventListener('click', placeOrder);
-    }
-
-    // Toggle Order History visibility
-    if (toggleOrderHistoryBtn) {
-        toggleOrderHistoryBtn.addEventListener('click', () => {
-            if (orderHistorySection.style.display === 'block') {
-                orderHistorySection.style.display = 'none';
-                toggleOrderHistoryBtn.textContent = 'Show Order History';
-            } else {
-                orderHistorySection.style.display = 'block';
-                toggleOrderHistoryBtn.textContent = 'Hide Order History';
-                loadOrderHistory(); // Load when shown
-            }
+if (cartModal) {
+    closeCartModalButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            cartModal.style.display = 'none';
         });
-    }
-
-    // Rating star click handler
-    if (ratingStarsContainer) {
-        ratingStarsContainer.addEventListener('click', (event) => {
-            const star = event.target.closest('.fa-star');
-            if (star) {
-                selectedRating = parseInt(star.dataset.rating);
-                updateRatingStars();
-            }
-        });
-    }
-
-    // Submit rating button
-    if (submitRatingButton) {
-        submitRatingButton.addEventListener('click', submitProductRating);
-    }
-
-    // Close rating modal
-    if (closeRatingModalBtn) {
-        closeRatingModalBtn.addEventListener('click', closeRatingModal);
-    }
+    });
     window.addEventListener('click', (event) => {
-        if (event.target === ratingModal) {
-            closeRatingModal();
+        if (event.target === cartModal) {
+            cartModal.style.display = 'none';
         }
     });
+}
+
+// Toggle Order History visibility
+if (toggleOrderHistoryBtn) {
+    toggleOrderHistoryBtn.addEventListener('click', () => {
+        if (orderHistorySection.style.display === 'block') {
+            orderHistorySection.style.display = 'none';
+            toggleOrderHistoryBtn.textContent = 'Show Order History';
+        } else {
+            orderHistorySection.style.display = 'block';
+            toggleOrderHistoryBtn.textContent = 'Hide Order History';
+            loadOrderHistory(); // Load when shown
+        }
+    });
+}
+
+// Rating star click handler
+if (ratingStarsContainer) {
+    ratingStarsContainer.addEventListener('click', (event) => {
+        const star = event.target.closest('.fa-star');
+        if (star) {
+            selectedRating = parseInt(star.dataset.rating);
+            updateRatingStars();
+        }
+    });
+}
+
+// Submit rating button
+if (submitRatingButton) {
+    submitRatingButton.addEventListener('click', submitProductRating);
+}
+
+// Close rating modal
+if (closeRatingModalBtn) {
+    closeRatingModalBtn.addEventListener('click', closeRatingModal);
+}
+window.addEventListener('click', (event) => {
+    if (event.target === ratingModal) {
+        closeRatingModal();
+    }
 });
