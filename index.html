@@ -17,70 +17,102 @@
     <meta property="og:url" content="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/index.html">
     <meta property="og:title" content="Hina's Root & Bloom - Your Online Store for Quality and Organic Products">
     <meta property="og:description" content="Discover Hina's Root & Bloom - your online store for high-quality, organic, and unique products. Explore our collection of fabric, perfumes, tools, electronics, clothing, books, home & kitchen, beauty, toys, sports, and other brands.">
-    <meta property="og:image" content="Hina’s Root&Bloom.png">
+    <meta property="og:image" content="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/Hina%E2%80%99s%20Root&Bloom.png">
 
-    <title>Hina's Root&Bloom</title>
+
+    <title>Hina's Root & Bloom</title>
+    <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.tailwindcss.com"></script> </head>
+</head>
 <body>
     <header class="app-header">
         <div class="header-top">
             <div class="logo">
-                <img src="Hina’s Root&Bloom.png" alt="Hina's Root&Bloom Logo">
-                <h1>Hina's Root&Bloom</h1>
+                <a href="index.html"><h1>Hina'sRoot&Bloom</h1></a>
             </div>
-            <nav class="main-nav">
-                <ul>
-                    <li><a href="#home">Home</a></li>
-                    <li><a href="#products-section">Products</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                </ul>
-            </nav>
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Search products...">
+                <button id="search-button" class="primary-button"><i class="fas fa-search"></i> Search</button>
+            </div>
             <div class="user-actions">
-                <button id="login-signup-btn" class="login-signup-button"><i class="fas fa-user-circle"></i> Login/Sign Up</button>
-                <div class="profile-dropdown-container">
-                    <button id="profile-btn" class="profile-button" style="display: none;"><i class="fas fa-user"></i> <span id="user-email-display"></span></button>
-                    <div id="profile-dropdown" class="profile-dropdown-content">
-                        <a href="#" id="view-orders-btn">My Orders</a>
-                        <a href="#" id="logout-btn">Logout</a>
+                <div class="dropdown-container">
+                    <button class="user-menu-btn"><i class="fas fa-user-circle"></i> <span id="user-display-name">Guest</span> <i class="fas fa-caret-down"></i></button>
+                    <div class="dropdown-content">
+                        <a href="#" id="login-link"><i class="fas fa-sign-in-alt"></i> Login</a>
+                        <a href="#" id="signup-link"><i class="fas fa-user-plus"></i> Sign Up</a>
+                        <a href="#" id="logout-link" style="display: none;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                        <a href="#" id="order-history-link" style="display: none;"><i class="fas fa-history"></i> Order History</a>
                     </div>
                 </div>
+                <button id="cart-button" class="secondary-button"><i class="fas fa-shopping-cart"></i> Cart (<span id="cart-count">0</span>)</button>
             </div>
         </div>
-        <div class="header-bottom">
-            <div class="search-bar">
-                <input type="text" id="search-input" placeholder="Search for products...">
-                <button id="search-btn"><i class="fas fa-search"></i> Search</button>
-            </div>
-        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="#" data-category="all" class="category-link active">All Products</a></li>
+                <li><a href="#" data-category="fabric" class="category-link">Fabric</a></li>
+                <li><a href="#" data-category="perfumes" class="category-link">Perfumes</a></li>
+                <li><a href="#" data-category="tools" class="category-link">Tools</a></li>
+                <li><a href="#" data-category="electronics" class="category-link">Electronics</a></li>
+                <li><a href="#" data-category="clothing" class="category-link">Clothing</a></li>
+                <li><a href="#" data-category="books" class="category-link">Books</a></li>
+                <li><a href="#" data-category="home_kitchen" class="category-link">Home & Kitchen</a></li>
+                <li><a href="#" data-category="beauty" class="category-link">Beauty</a></li>
+                <li><a href="#" data-category="toys_sports" class="category-link">Toys & Sports</a></li>
+                <li><a href="#" data-category="other_brands" class="category-link">Other Brands</a></li>
+                <li><a href="#" id="about-us-link">About Us</a></li>
+            </ul>
+        </nav>
     </header>
 
-    <main class="app-content">
+    <main>
         <section id="hero-section" class="hero-section">
             <div class="hero-content">
-                <h2>Welcome to Hina's Root&Bloom</h2>
-                <p>Discover unique and quality products for every aspect of your life.</p>
-                <button class="cta-button" onclick="document.getElementById('products-section').scrollIntoView({ behavior: 'smooth' });">Explore Products</button>
+                <h2>Welcome to Hina's Root & Bloom</h2>
+                <p>Discover organic, unique, and high-quality products for your everyday needs.</p>
+                <button class="primary-button" onclick="document.getElementById('products-section').scrollIntoView({ behavior: 'smooth' });">Shop Now</button>
+            </div>
+        </section>
+
+        <section id="auth-section" class="auth-section" style="display: none;">
+            <div id="login-container" class="auth-container">
+                <h2>Login to Your Account</h2>
+                <div id="login-error-message" class="error-message"></div>
+                <label for="login-email">Email:</label>
+                <input type="email" id="login-email" placeholder="Enter your email">
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" placeholder="Enter your password">
+                <button id="login-button" class="primary-button">Login</button>
+                <p>Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
+            </div>
+
+            <div id="signup-container" class="auth-container" style="display: none;">
+                <h2>Create Your Account</h2>
+                <div id="signup-error-message" class="error-message"></div>
+                <label for="signup-name">Name:</label>
+                <input type="text" id="signup-name" placeholder="Enter your name">
+                <label for="signup-email">Email:</label>
+                <input type="email" id="signup-email" placeholder="Enter your email">
+                <label for="signup-password">Password:</label>
+                <input type="password" id="signup-password" placeholder="Create a password">
+                <button id="signup-button" class="primary-button">Sign Up</button>
+                <p>Already have an account? <a href="#" id="show-login">Login</a></p>
             </div>
         </section>
 
         <section id="products-section" class="products-section">
-            <h2>Our Products</h2>
             <div class="filter-sort-section">
-                <div class="category-filters">
-                    <button class="category-button active" data-category="all">All</button>
+                <div class="category-filters" id="category-filters">
                     </div>
                 <div class="sort-by">
-                    <label for="sort-select">Sort by:</label>
+                    <label for="sort-select">Sort By:</label>
                     <select id="sort-select">
                         <option value="default">Default</option>
                         <option value="price-asc">Price: Low to High</option>
                         <option value="price-desc">Price: High to Low</option>
                         <option value="name-asc">Name: A-Z</option>
                         <option value="name-desc">Name: Z-A</option>
-                        <option value="rating-desc">Rating: High to Low</option>
                     </select>
                 </div>
             </div>
@@ -88,118 +120,119 @@
                 </div>
         </section>
 
-        <section id="order-history-section" class="order-history-section" style="display: none;">
-            <h2>My Order History</h2>
-            <div id="order-history-list" class="order-history-list">
-                </div>
-            <button id="close-order-history-btn" class="secondary-button">Close Order History</button>
+        <section id="about-us-section" class="about-us-section" style="display:none;">
+            <div class="about-us-content">
+                <h2>About Hina's Root & Bloom</h2>
+                <p>Welcome to Hina's Root & Bloom, your premier online destination for high-quality, organic, and truly unique products. We believe in offering items that not only meet your needs but also enhance your lifestyle, bringing a touch of nature and authenticity into your home.</p>
+                
+                <h3>Our Vision</h3>
+                <p>Our vision is to cultivate a community that appreciates the value of natural, sustainable, and thoughtfully curated goods. We aim to be your trusted source for products that are good for you, your home, and the planet.</p>
+                
+                <h3>What We Offer</h3>
+                <p>At Hina's Root & Bloom, we meticulously select products across a diverse range of categories, including:</p>
+                <ul>
+                    <li><strong>Fabric:</strong> Ethically sourced and beautifully crafted textiles.</li>
+                    <li><strong>Perfumes:</strong> Unique and captivating fragrances made with natural essences.</li>
+                    <li><strong>Tools:</strong> Durable and reliable tools for everyday tasks and specialized hobbies.</li>
+                    <li><strong>Electronics:</strong> Innovative and eco-friendly gadgets.</li>
+                    <li><strong>Clothing:</strong> Comfortable, stylish, and sustainably produced apparel.</li>
+                    <li><strong>Books:</strong> A curated collection to inspire, educate, and entertain.</li>
+                    <li><strong>Home & Kitchen:</strong> Functional and aesthetic items to beautify your living spaces.</li>
+                    <li><strong>Beauty:</strong> Natural and nourishing products for your skin and hair.</li>
+                    <li><strong>Toys & Sports:</strong> Engaging and safe products for all ages.</li>
+                    <li><strong>Other Brands:</strong> A selection of exceptional products from like-minded brands.</li>
+                </ul>
+                
+                <h3>Our Commitment</h3>
+                <p>We are committed to transparency, quality, and customer satisfaction. Every product at Hina's Root & Bloom is chosen with care, ensuring it meets our high standards for purity, craftsmanship, and positive impact. We strive to provide an exceptional shopping experience, from Browse our collection to receiving your order.</p>
+                
+                <h3>Join Our Journey</h3>
+                <p>Thank you for choosing Hina's Root & Bloom. We invite you to explore our store and discover products that resonate with your values and enrich your life. Join us in embracing a lifestyle rooted in quality and natural beauty.</p>
+            </div>
         </section>
 
-        <section id="contact" class="contact-section">
-            <h2>Contact Us</h2>
-            <p>Have questions or need assistance? Reach out to us!</p>
-            <form id="contact-form" class="contact-form">
-                <div class="form-group">
-                    <label for="contact-name">Name:</label>
-                    <input type="text" id="contact-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="contact-email">Email:</label>
-                    <input type="email" id="contact-email" required>
-                </div>
-                <div class="form-group">
-                    <label for="contact-message">Message:</label>
-                    <textarea id="contact-message" rows="5" required></textarea>
-                </div>
-                <button type="submit" class="cta-button">Send Message</button>
+
+        <section id="cart-section" class="cart-section" style="display: none;">
+            <h2>Your Shopping Cart</h2>
+            <div id="cart-items" class="cart-items">
+                <p id="empty-cart-message" style="text-align: center; color: var(--color-medium-gray);">Your cart is empty.</p>
+            </div>
+            <div class="cart-summary">
+                <p>Total: <span id="cart-total">$0.00</span></p>
+                <button id="checkout-button" class="primary-button" style="display: none;">Proceed to Checkout</button>
+            </div>
+        </section>
+
+        <section id="checkout-section" class="checkout-section" style="display: none;">
+            <h2>Checkout</h2>
+            <form id="place-order-form" class="order-form">
+                <h3>Delivery Information</h3>
+                <label for="customer-name">Full Name:</label>
+                <input type="text" id="customer-name" required>
+
+                <label for="customer-address">Delivery Address:</label>
+                <input type="text" id="customer-address" required>
+
+                <label for="customer-phone">Phone Number:</label>
+                <input type="tel" id="customer-phone" required>
+
+                <label for="customer-notes">Order Notes (Optional):</label>
+                <textarea id="customer-notes" rows="3"></textarea>
+
+                <h3>Order Summary</h3>
+                <div id="checkout-order-summary" class="checkout-order-summary">
+                    </div>
+
+                <label for="order-quantity">Quantity:</label>
+                <input type="number" id="order-quantity" value="1" min="1" required>
+
+                <p class="total-price-display">Total Price: <span id="order-total-price">$0.00</span></p>
+
+                <button type="submit" class="primary-button"><i class="fas fa-money-check-alt"></i> Place Order</button>
             </form>
         </section>
+
+        <section id="order-history-section" class="order-history-section" style="display: none;">
+            <h2>Your Order History</h2>
+            <button id="close-order-history-btn" class="secondary-button close-button-right"><i class="fas fa-times"></i> Close</button>
+            <div id="order-history-list" class="order-history-list">
+                <p id="empty-order-history-message" style="text-align: center; color: var(--color-medium-gray);">No orders found.</p>
+            </div>
+        </section>
+
+
     </main>
 
-    <div id="auth-modal" class="modal-overlay">
+    <div id="product-modal" class="modal-overlay">
         <div class="modal-content">
-            <span class="close-button" id="close-auth-modal">&times;</span>
-            <div id="login-section">
-                <h3>Login</h3>
-                <form id="login-form">
-                    <div class="form-group">
-                        <label for="login-email">Email:</label>
-                        <input type="email" id="login-email" required>
+            <span class="close-button" id="close-product-modal">&times;</span>
+            <div class="modal-product-details">
+                <div class="modal-image-gallery">
+                    <img id="modal-product-image" src="https://via.placeholder.com/300" alt="Product Image">
+                    <div id="modal-image-thumbnails" class="modal-image-thumbnails">
+                        </div>
+                </div>
+                <div class="modal-product-info">
+                    <h3 id="modal-product-title">Product Title</h3>
+                    <p class="modal-product-price" id="modal-product-price">$0.00</p>
+                    <p id="modal-product-description">Product Description</p>
+                    <p class="modal-product-stock" id="modal-product-stock">Stock: 100</p>
+                    <div id="modal-product-rating" class="product-card-rating">
+                        </div>
+                    <button id="add-to-cart-modal-btn" class="primary-button"><i class="fas fa-cart-plus"></i> Add to Cart</button>
+                    <button id="buy-now-modal-btn" class="secondary-button"><i class="fas fa-money-bill-wave"></i> Buy Now</button>
+                    <button id="rate-product-button" class="secondary-button"><i class="fas fa-star"></i> Rate Product</button>
+                    <div id="modal-product-video-container" style="display: none;">
+                        <h4>Product Video:</h4>
+                        <iframe id="modal-product-video" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                     </div>
-                    <div class="form-group">
-                        <label for="login-password">Password:</label>
-                        <input type="password" id="login-password" required>
-                    </div>
-                    <button type="submit" class="modal-button primary">Login</button>
-                </form>
-                <p>Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
-            </div>
-            <div id="signup-section" style="display: none;">
-                <h3>Sign Up</h3>
-                <form id="signup-form">
-                    <div class="form-group">
-                        <label for="signup-email">Email:</label>
-                        <input type="email" id="signup-email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="signup-password">Password:</label>
-                        <input type="password" id="signup-password" required>
-                    </div>
-                    <button type="submit" class="modal-button primary">Sign Up</button>
-                </form>
-                <p>Already have an account? <a href="#" id="show-login">Login</a></p>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="product-detail-modal" class="modal-overlay">
-        <div class="modal-content">
-            <span class="close-button" id="close-product-detail-modal">&times;</span>
-            <div class="modal-product-header">
-                <h3 id="modal-product-name"></h3>
-                <p class="modal-product-price" id="modal-product-price"></p>
-            </div>
-            <div class="modal-product-content-wrapper"> <div class="modal-product-image-container">
-                    <img id="modal-product-image" src="" alt="Product Image">
-                </div>
-                <div id="modal-product-video-container" style="display: none;">
-                    <iframe id="modal-product-video" frameborder="0" allowfullscreen></iframe>
-                </div>
-                <p id="modal-product-description"></p>
-                <p id="modal-product-category"></p>
-                <div class="product-rating-display" id="modal-product-rating-display">
-                    Rating: <span class="stars" id="display-stars"></span> (<span id="rating-count">0</span> reviews)
-                </div>
-
-                <h4>Place Your Order</h4>
-                <form id="place-order-form">
-                    <div class="form-group">
-                        <label for="order-name">Your Name:</label>
-                        <input type="text" id="order-name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="order-email">Your Email:</label>
-                        <input type="email" id="order-email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="order-address">Shipping Address:</label>
-                        <textarea id="order-address" rows="3" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="order-quantity">Quantity:</label>
-                        <input type="number" id="order-quantity" value="1" min="1" required>
-                    </div>
-                    <p>Total: <span id="order-total-price">0.00</span> PKR</p>
-                    <button type="submit" class="modal-button primary">Place Order</button>
-                </form>
-
-            </div>
-            <button id="rate-product-btn" class="modal-button secondary">Rate This Product</button>
-        </div>
-    </div>
-
-    <div id="rating-modal" class="modal-overlay">
-        <div class="modal-content">
+    <div id="rating-modal" class="custom-modal-overlay">
+        <div class="custom-modal-content">
             <span class="close-button" id="close-rating-modal">&times;</span>
             <h3>Rate "<span id="rating-product-name"></span>"</h3>
             <div class="rating-stars" id="rating-stars-container">
@@ -225,9 +258,6 @@
         </div>
     </div>
 
-    <div class="iframe-container">
-        <iframe src="https://warnightog-thunderbound.github.io/Hina-sRoot-Bloom-Support/index.html" title="Hina's Root&Bloom Support Chat"></iframe>
-    </div>
 
     <footer class="app-footer">
         <p>Developed by WarNightOG/HassanJaved</p>
